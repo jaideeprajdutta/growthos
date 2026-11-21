@@ -12,15 +12,16 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## State of this repo
 
-- A bare Next.js scaffold: `app/` contains only `layout.tsx` and `page.tsx`, the create-next-app defaults ("To get started, edit the page.tsx file"). No GrowthOS pages, backend, or docs exist yet — don't expect or hunt for them.
-- No commits yet — the whole tree is untracked, so there is no history to learn from.
-- README.md is still the create-next-app template; treat it as placeholder, not product docs.
+- GrowthOS Phase 1 is being built: the Next.js App Router app lives in `frontend/` (currently the create-next-app scaffold — `app/` has only `layout.tsx`/`page.tsx`). `docs/` and `backend/` don't exist yet — add them as features land.
 
 ## Commands
 
+Run from `frontend/`:
+
 - `npm run dev` — dev server, open http://localhost:3000.
 - `npm run build` / `npm run start`.
-- `npm run lint` runs bare `eslint` with no files — passes silently; lint explicitly, e.g. `npx eslint app`.
+- `npm run lint` — runs bare `eslint` with no files — lint explicitly, e.g. `npx eslint app`.
+- `npm run typecheck` — `tsc --noEmit`.
 - Node `>= 20.9` (Next engines). Installed: v22.14.0.
 
 ## Tech facts
