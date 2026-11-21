@@ -7,7 +7,9 @@ from app.models.company_intelligence_profiles import CompanyIntelligenceProfile
 from app.models.company_profiles import CompanyProfile
 from app.models.diagnostics import DiagnosticFinding, DiagnosticRun
 from app.models.evidence import Evidence
+from app.models.experiment_learnings import ExperimentLearning
 from app.models.experiment_results import ExperimentResult
+from app.models.experiment_tasks import ExperimentTask
 from app.models.experiments import Experiment
 from app.models.execution_actions import ExecutionAction
 from app.models.growth_objectives import GrowthObjective
@@ -29,7 +31,9 @@ __all__ = [
     "DiagnosticFinding",
     "DiagnosticRun",
     "Evidence",
+    "ExperimentLearning",
     "ExperimentResult",
+    "ExperimentTask",
     "Experiment",
     "ExecutionAction",
     "GrowthObjective",

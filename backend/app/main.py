@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from app.ai.client import AIError
 from app.api.v1 import router as api_router
 from app.core.config import settings
-from app.core.exceptions import DuplicateError, NotFoundError
+from app.core.exceptions import DomainValidationError, DuplicateError, NotFoundError
 from app.db.session import engine
 from app.models.base import Base
 from app.research.jobs import recover_interrupted_runs
@@ -55,6 +55,10 @@ def create_app() -> FastAPI:
     async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         errors = [{"field": list(error["loc"])[-1:], "message": error["msg"]} for error in exc.errors()]
         return JSONResponse(status_code=422, content={"detail": errors})
+
+    @app.exception_handler(DomainValidationError)
+    async def domain_validation_handler(request: Request, exc: DomainValidationError) -> JSONResponse:
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
 
     @app.exception_handler(AIError)
     async def ai_error_handler(request: Request, exc: AIError) -> JSONResponse:

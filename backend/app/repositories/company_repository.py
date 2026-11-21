@@ -19,7 +19,9 @@ from app.models import (
     DiagnosticRun,
     Evidence,
     Experiment,
+    ExperimentLearning,
     ExperimentResult,
+    ExperimentTask,
     ExecutionAction,
     GrowthObjective,
     Integration,
@@ -121,7 +123,9 @@ def delete_company(db: Session, company_id: str, workspace_id: str) -> None:
     company = require_company(db, company_id, workspace_id)
     opportunity_ids = select(Opportunity.id).where(Opportunity.company_id == company_id)
     db.execute(delete(OpportunityEvidence).where(OpportunityEvidence.opportunity_id.in_(opportunity_ids)))
+    db.execute(delete(ExperimentLearning).where(ExperimentLearning.company_id == company_id))
     db.execute(delete(ExperimentResult).where(ExperimentResult.company_id == company_id))
+    db.execute(delete(ExperimentTask).where(ExperimentTask.company_id == company_id))
     db.execute(delete(Experiment).where(Experiment.company_id == company_id))
     db.execute(delete(Opportunity).where(Opportunity.company_id == company_id))
     db.execute(delete(DiagnosticFinding).where(DiagnosticFinding.company_id == company_id))

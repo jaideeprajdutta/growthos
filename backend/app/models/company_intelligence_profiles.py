@@ -23,6 +23,8 @@ class CompanyIntelligenceProfile(Base, TimestampMixin):
     generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     provenance: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Recorded experiment outcomes (user-entered, never AI-invented).
+    experiment_outcomes: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
     value_proposition: Mapped[str | None] = mapped_column(Text, nullable=True, default="")
     target_audience: Mapped[str | None] = mapped_column(Text, nullable=True, default="")
     customer_pain_points: Mapped[str | None] = mapped_column(Text, nullable=True, default="")

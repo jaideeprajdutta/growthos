@@ -48,6 +48,9 @@ class OpportunityOut(BaseModel):
     priorityScore: int | None
     status: OpportunityStatus
     recommendedNextAction: str
+    lastLearningOutcome: str | None
+    lastLearningSummary: str | None
+    outcomeAdjustment: int | None
     createdAt: datetime
     updatedAt: datetime
 
@@ -95,6 +98,9 @@ def opportunity_out(opportunity: Opportunity) -> OpportunityOut:
         priorityScore=opportunity.priority_score,
         status=opportunity.status,
         recommendedNextAction=opportunity.recommended_next_action,
+        lastLearningOutcome=opportunity.last_learning_outcome,
+        lastLearningSummary=opportunity.last_learning_summary,
+        outcomeAdjustment=opportunity.outcome_adjustment,
         createdAt=opportunity.created_at,
         updatedAt=opportunity.updated_at,
     )

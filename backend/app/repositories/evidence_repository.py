@@ -5,6 +5,7 @@ import re
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import DomainValidationError
 from app.models import Evidence, ResearchPage
 from app.models.base import utc_now
 
@@ -31,6 +32,21 @@ def get_evidence(db: Session, evidence_id: str, company_id: str) -> Evidence | N
     return db.execute(
         select(Evidence).where(Evidence.id == evidence_id, Evidence.company_id == company_id)
     ).scalar_one_or_none()
+
+
+def validate_evidence_ids(db: Session, company_id: str, evidence_ids: list[str] | None) -> None:
+    """Reject evidence IDs that do not exist in this company."""
+    if not evidence_ids:
+        return
+    unique_ids = set(evidence_ids)
+    valid_ids = set(
+        db.execute(
+            select(Evidence.id).where(Evidence.company_id == company_id, Evidence.id.in_(unique_ids))
+        ).scalars().all()
+    )
+    invalid = sorted(unique_ids - valid_ids)
+    if invalid:
+        raise DomainValidationError(f"Evidence not found for this company: {', '.join(invalid)}.")
 
 
 def _statement_from_text(text: str) -> str:

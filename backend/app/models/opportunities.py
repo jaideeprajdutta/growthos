@@ -24,3 +24,7 @@ class Opportunity(Base, TimestampMixin):
     diagnostic_finding_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("diagnostic_findings.id"), nullable=True, index=True
     )
+    # Phase 3: historical experiment outcomes feed future prioritisation.
+    last_learning_outcome: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    last_learning_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    outcome_adjustment: Mapped[int | None] = mapped_column(Integer, nullable=True, default=0)

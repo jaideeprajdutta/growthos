@@ -1,15 +1,59 @@
-"""Experiment result routes: create, list, update, delete."""
+"""Experiment result routes: structured measurements and explicit CSV import."""
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.v1.dependencies import get_workspace
 from app.db.session import get_db
+from app.measurement.csv_import import parse_measurement_csv
 from app.models.workspaces import Workspace
 from app.repositories import company_repository, experiment_result_repository
-from app.schemas.experiment_results import ExperimentResultCreate, ExperimentResultOut, ExperimentResultUpdate, experiment_result_out
+from app.schemas.experiment_results import (
+    CsvPreviewOut,
+    CsvPreviewRequest,
+    ExperimentResultCreate,
+    ExperimentResultOut,
+    ExperimentResultUpdate,
+    MeasurementImport,
+    experiment_result_out,
+)
 
 router = APIRouter(tags=["experiment-results"])
+
+
+@router.post(
+    "/companies/{company_id}/experiments/{experiment_id}/results/preview-csv",
+    response_model=CsvPreviewOut,
+)
+def preview_measurement_csv(
+    company_id: str,
+    experiment_id: str,
+    data: CsvPreviewRequest,
+    db: Session = Depends(get_db),
+    workspace: Workspace = Depends(get_workspace),
+) -> CsvPreviewOut:
+    """Validate and preview CSV rows without writing anything."""
+    company_repository.require_company(db, company_id, workspace.id)
+    rows, errors, headers = parse_measurement_csv(data.csv)
+    return CsvPreviewOut(rows=rows, errors=errors, headers=headers)
+
+
+@router.post(
+    "/companies/{company_id}/experiments/{experiment_id}/results/import",
+    response_model=list[ExperimentResultOut],
+    status_code=201,
+)
+def import_measurements(
+    company_id: str,
+    experiment_id: str,
+    data: MeasurementImport,
+    db: Session = Depends(get_db),
+    workspace: Workspace = Depends(get_workspace),
+) -> list[ExperimentResultOut]:
+    """Import only rows the user has already previewed and confirmed."""
+    company_repository.require_company(db, company_id, workspace.id)
+    results = experiment_result_repository.import_measurements(db, experiment_id, company_id, data)
+    return [experiment_result_out(result) for result in results]
 
 
 @router.post(

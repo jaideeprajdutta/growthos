@@ -7,9 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.v1.dependencies import get_workspace
+from app.core.constants import LOCAL_ACTOR
 from app.core.exceptions import NotFoundError
 from app.db.session import get_db
 from app.models import Experiment, Evidence, Opportunity, OpportunityEvidence
+from app.models.base import utc_now
 from app.models.workspaces import Workspace
 from app.opportunities import generate_opportunities, scoring
 from app.repositories import activity_log_repository, company_repository, experiment_repository, opportunity_repository
@@ -159,10 +161,16 @@ def create_experiment_for_opportunity(
     opportunity = opportunity_repository.get_opportunity(db, opportunity_id, company_id)
     if opportunity is None:
         raise NotFoundError(f"Opportunity {opportunity_id} not found.")
+    hypothesis = (opportunity.description or opportunity.title).strip() or "Experiment for opportunity."
     experiment = Experiment(
         company_id=company_id,
         opportunity_id=opportunity.id,
-        hypothesis=(opportunity.description or opportunity.title).strip() or "Experiment for opportunity.",
+        name=opportunity.title[:200],
+        description=(opportunity.description or "").strip() or None,
+        hypothesis=hypothesis,
+        target_audience=(opportunity.supporting_evidence or "").strip()[:2000],
+        success_metric=(opportunity.expected_impact or "").strip()[:2000],
+        decision_history=[{"from": None, "to": "proposed", "status": "proposed", "actor": LOCAL_ACTOR, "note": "Created from opportunity.", "at": utc_now().isoformat()}],
         status="proposed",
     )
     db.add(experiment)

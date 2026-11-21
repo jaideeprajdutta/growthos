@@ -7,3 +7,7 @@ class NotFoundError(Exception):
 
 class DuplicateError(Exception):
     """Raised when creating a record would violate a uniqueness constraint."""
+
+
+class DomainValidationError(Exception):
+    """Raised when a request is structurally valid but breaks a workflow rule."""
