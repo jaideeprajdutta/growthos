@@ -21,3 +21,6 @@ class Opportunity(Base, TimestampMixin):
     priority_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="proposed")
     recommended_next_action: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    diagnostic_finding_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("diagnostic_findings.id"), nullable=True, index=True
+    )

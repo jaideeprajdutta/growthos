@@ -21,5 +21,14 @@ class Settings:
 
         self.log_level = (os.getenv("LOG_LEVEL", "INFO").strip() or "INFO").upper()
 
+        ai_provider = os.getenv("AI_PROVIDER", "").strip().lower()
+        if ai_provider not in ("", "openai", "anthropic"):
+            raise ValueError("AI_PROVIDER must be 'openai' or 'anthropic'.")
+        self.ai_provider = ai_provider
+        self.ai_api_key = (
+            os.getenv("AI_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY") or ""
+        ).strip()
+        self.ai_model = os.getenv("AI_MODEL", "").strip()
+
 
 settings = Settings()

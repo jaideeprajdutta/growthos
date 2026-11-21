@@ -38,6 +38,7 @@ class ExperimentUpdate(BaseModel):
 class ExperimentOut(BaseModel):
     id: str
     companyId: str
+    opportunityId: str | None
     hypothesis: str
     problem: str
     action: str
@@ -57,6 +58,7 @@ def experiment_out(experiment: Experiment) -> ExperimentOut:
     return ExperimentOut(
         id=experiment.id,
         companyId=experiment.company_id,
+        opportunityId=experiment.opportunity_id,
         hypothesis=experiment.hypothesis,
         problem=experiment.problem,
         action=experiment.action,

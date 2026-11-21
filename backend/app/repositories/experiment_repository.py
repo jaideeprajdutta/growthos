@@ -39,6 +39,15 @@ def list_experiments(db: Session, company_id: str) -> Sequence[Experiment]:
     ).scalars().all()
 
 
+def list_experiments_by_opportunity(db: Session, opportunity_id: str) -> Sequence[Experiment]:
+    """List experiments linked to an opportunity, newest first."""
+    return db.execute(
+        select(Experiment)
+        .where(Experiment.opportunity_id == opportunity_id)
+        .order_by(Experiment.created_at.desc(), Experiment.id.desc())
+    ).scalars().all()
+
+
 def _get_scoped(db: Session, experiment_id: str, company_id: str) -> Experiment:
     experiment = db.execute(
         select(Experiment).where(Experiment.id == experiment_id, Experiment.company_id == company_id)

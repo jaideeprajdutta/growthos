@@ -10,6 +10,12 @@ from app.models import Opportunity
 from app.schemas.opportunities import OpportunityCreate, OpportunityUpdate
 
 
+def get_opportunity(db: Session, opportunity_id: str, company_id: str) -> Opportunity | None:
+    return db.execute(
+        select(Opportunity).where(Opportunity.id == opportunity_id, Opportunity.company_id == company_id)
+    ).scalar_one_or_none()
+
+
 def create_opportunity(db: Session, company_id: str, data: OpportunityCreate) -> Opportunity:
     opportunity = Opportunity(
         company_id=company_id,
