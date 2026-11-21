@@ -26,6 +26,8 @@ export function useApi<T>(fetcher: (() => Promise<T>) | null, key: string): UseA
     fetcherRef.current = fetcher;
   });
 
+  const effectiveKey = fetcher ? key : `pending-${key}`;
+
   useEffect(() => {
     let cancelled = false;
     const run = fetcherRef.current;
@@ -40,7 +42,7 @@ export function useApi<T>(fetcher: (() => Promise<T>) | null, key: string): UseA
     return () => {
       cancelled = true;
     };
-  }, [key]);
+  }, [effectiveKey]);
 
   if (result.key !== key) {
     return { data: null, loading: true, error: null };
