@@ -14,7 +14,7 @@ from app.models.base import Base, TimestampMixin, new_id
 
 class CompanyIntelligenceProfile(Base, TimestampMixin):
     __tablename__ = "company_intelligence_profiles"
-    __table_args__ = (UniqueConstraint("company_id", name="uq_company_intelligence_profiles_company"),)
+    __table_args__ = (UniqueConstraint("company_id"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     company_id: Mapped[str] = mapped_column(String(36), ForeignKey("companies.id"), nullable=False, index=True)
