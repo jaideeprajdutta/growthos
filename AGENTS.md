@@ -12,16 +12,24 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## State of this repo
 
-- GrowthOS Phase 1 is being built: the Next.js App Router app lives in `frontend/` (currently the create-next-app scaffold — `app/` has only `layout.tsx`/`page.tsx`). `docs/` and `backend/` don't exist yet — add them as features land.
+- GrowthOS Phase 1: the Next.js App Router app lives in `frontend/`; the FastAPI backend lives in `backend/`; the growth-system docs live in `docs/` (see `docs/PRODUCT_IMPLEMENTATION_STATUS.md` for the feature status).
 
 ## Commands
 
-Run from `frontend/`:
+From `backend/`:
+
+- `.venv/Scripts/python.exe -m pytest tests/ -q` — backend tests (23 passing).
+- `.venv/Scripts/alembic upgrade head` — apply migrations.
+- `.venv/Scripts/uvicorn app.main:app --reload --port 8000` — start the API.
+- `python -m venv .venv && .venv/Scripts/pip install -r requirements.txt` — first-time setup.
+
+From `frontend/`:
 
 - `npm run dev` — dev server, open http://localhost:3000.
 - `npm run build` / `npm run start`.
-- `npm run lint` — runs bare `eslint` with no files — lint explicitly, e.g. `npx eslint app`.
+- `npx eslint app components lib hooks types` — lint (0 errors expected).
 - `npm run typecheck` — `tsc --noEmit`.
+
 - Node `>= 20.9` (Next engines). Installed: v22.14.0.
 
 ## Tech facts
@@ -29,6 +37,7 @@ Run from `frontend/`:
 - TypeScript: strict, bundler moduleResolution, `@/*` alias → repo root (tsconfig).
 - Tailwind v4 — `globals.css` starts `@import "tailwindcss";` and uses `@theme inline` tokens (`--color-background`, `--color-foreground`, `--font-geist-sans`, `--font-geist-mono`).
 - ESLint: `eslint-config-next` (core-web-vitals + typescript).
+- Backend: FastAPI + SQLAlchemy + Alembic (`backend/`); PostgreSQL via `docker-compose.yml`.
 - `next.config.ts`: `cacheComponents` and `partialPrefetching` enabled; turbopack CSS rule via `@tailwindcss/turbopack`.
 
 ## Product context
