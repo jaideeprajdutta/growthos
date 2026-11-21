@@ -159,6 +159,9 @@ export const growthosApi = {
   generateDiagnostics: (companyId: string): Promise<DiagnosticRun> =>
     request(`/companies/${encodeURIComponent(companyId)}/diagnostics/generate`, { method: "POST" }),
 
+  generateOpportunities: (companyId: string): Promise<Opportunity[]> =>
+    request(`/companies/${encodeURIComponent(companyId)}/opportunities/generate`, { method: "POST" }),
+
   getOpportunityDetail: (companyId: string, opportunityId: string): Promise<OpportunityDetail> =>
     request(`/companies/${encodeURIComponent(companyId)}/opportunities/${encodeURIComponent(opportunityId)}`),
   updateOpportunityStatus: (companyId: string, opportunityId: string, status: Opportunity["status"]): Promise<Opportunity> =>

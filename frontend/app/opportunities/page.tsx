@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Trash2, ArrowDownUp } from "lucide-react";
+import { Plus, Sparkles, Trash2, ArrowDownUp } from "lucide-react";
 import { useActiveCompany } from "@/hooks/use-active-company";
 import { useApi } from "@/hooks/use-api";
 import { growthosApi } from "@/lib/api";
@@ -30,6 +30,9 @@ const OPPORTUNITY_STATUS_LABELS: Record<string, string> = {
   in_progress: "In progress",
   completed: "Completed",
   rejected: "Rejected",
+  discovered: "Discovered",
+  reviewing: "Reviewing",
+  experimenting: "Experimenting",
 };
 
 const OPPORTUNITY_STATUS_FILTERS = [
@@ -62,7 +65,10 @@ function useOpportunityForm() {
 export default function OpportunitiesPage() {
   const { company: activeCompany, loading: loadingCompany, error: companyError } = useActiveCompany();
   const companyId = activeCompany?.id ?? "";
-  const { data: opportunities, loading, error } = useApi<Opportunity[]>(companyId ? () => growthosApi.listOpportunities(companyId) : null, "opportunities");
+  const [listKey, setListKey] = useState(0);
+  const { data: opportunities, loading, error } = useApi<Opportunity[]>(companyId ? () => growthosApi.listOpportunities(companyId) : null, `opportunities-${listKey}`);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -110,6 +116,21 @@ export default function OpportunitiesPage() {
       setDetail(reloaded);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create the experiment.");
+    }
+  }
+
+  async function generateOpportunitiesNow() {
+    if (!companyId || generating) return;
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const generated = await growthosApi.generateOpportunities(companyId);
+      toast.success(`Generated ${generated.length} opportunity${generated.length === 1 ? "" : "ies"}.`);
+      setListKey((key) => key + 1);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : "Failed to generate opportunities.");
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -164,12 +185,24 @@ export default function OpportunitiesPage() {
         title="Opportunities"
         description="Growth opportunities identified for the active company — their supporting evidence, expected impact and priority."
         actions={
-          <Button onClick={() => { setEditing(null); setDialogOpen(true); form.reset(DEFAULT_DIALOG_VALUES); }}>
-            <Plus className="h-4 w-4" />
-            Record opportunity
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => void generateOpportunitiesNow()} disabled={generating || !companyId}>
+              <Sparkles className="h-4 w-4" />
+              {generating ? "Generating…" : "Generate opportunities"}
+            </Button>
+            <Button onClick={() => { setEditing(null); setDialogOpen(true); form.reset(DEFAULT_DIALOG_VALUES); }}>
+              <Plus className="h-4 w-4" />
+              Record opportunity
+            </Button>
+          </div>
         }
       />
+
+      {generateError ? <p className="text-sm text-destructive">Could not generate opportunities: {generateError}</p> : null}
+
+      <p className="text-xs text-fg-muted">
+        Generated opportunities use AI analysis; until an AI provider is configured this returns a clear error.
+      </p>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search opportunities…" aria-label="Search opportunities" className="sm:max-w-xs" startIcon={<ArrowDownUp className="h-4 w-4 text-fg-muted" />} />
