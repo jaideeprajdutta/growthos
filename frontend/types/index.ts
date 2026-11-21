@@ -26,6 +26,7 @@ export interface Company {
 export interface CompanyCreate {
   name: string;
   website?: string;
+  isActive?: boolean;
   businessModel?: CompanyBusinessModel;
   industry?: string;
   businessStage?: CompanyStage;
@@ -39,6 +40,7 @@ export interface CompanyCreate {
 export interface CompanyUpdate {
   name?: string;
   website?: string;
+  isActive?: boolean;
   businessModel?: CompanyBusinessModel;
   industry?: string;
   businessStage?: CompanyStage;
@@ -49,12 +51,43 @@ export interface CompanyUpdate {
   primaryMarket?: string;
 }
 
+export interface CompanyProfileCreate {
+  positioningStatement?: string;
+  competitiveLandscape?: string;
+  marketContext?: string;
+  productDescription?: string;
+}
+
+export interface CompanyProfile {
+  id: string;
+  companyId: string;
+  positioningStatement: string;
+  competitiveLandscape: string;
+  marketContext: string;
+  productDescription: string;
+}
+
 export interface GrowthObjective {
   id: string;
   companyId: string;
   objectiveType: GrowthObjectiveType;
   customObjective?: string;
   isPrimary: boolean;
-  createdAt: string;
-  updatedAt: string;
+}
+
+export interface ActivityLogEntry {
+  id: string;
+  companyId: string;
+  actorId?: string;
+  action: string;
+  title: string;
+  description: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface CompanyStats {
+  companyId: string;
+  opportunities: number;
+  runningExperiments: number;
+  objectives: number;
 }

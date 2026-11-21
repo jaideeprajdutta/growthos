@@ -1,8 +1,8 @@
 "use client";
 
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Beaker,
   Building2,
@@ -44,7 +44,6 @@ function isActiveRoute(pathname: string, href: string): boolean {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   const router = useRouter();
   const [companies, setCompanies] = useState<Company[] | null>(null);
   const [backendError, setBackendError] = useState<string | null>(null);
@@ -61,7 +60,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         if (!cancelled) setCompanies(loaded);
       })
       .catch(() => {
-        if (!cancelled) setBackendError("The backend is not reachable. Start it with `npm run start` in the `backend/` directory.");
+        if (!cancelled)
+          setBackendError("The backend is not reachable. Start it with `npm run start` in the `backend/` directory.");
       });
     return () => {
       cancelled = true;
@@ -89,27 +89,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <div className="flex min-h-full bg-bg text-fg">
-        <Dialog open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} title="Navigation" className="max-w-sm">
-          <nav className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors",
-                  isActiveRoute(pathname, item.href) ? "bg-muted text-fg" : "text-fg-muted hover:bg-muted hover:text-fg"
-                )}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </nav>
-          {backendError ? <p className="mt-6 text-sm text-destructive">{backendError}</p> : null}
-        </Dialog>
+        <Suspense fallback={null}>
+          <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+        </Suspense>
 
-        <aside className={cn("hidden border-r border-line bg-bg transition-all duration-200 md:block", collapsed ? "w-14" : "w-64")} aria-label="Main navigation">
+        <aside
+          className={cn(
+            "hidden border-r border-line bg-bg transition-all duration-200 md:block",
+            collapsed ? "w-14" : "w-64"
+          )}
+          aria-label="Main navigation"
+        >
           <div className="flex h-16 items-center border-b border-line px-4">
             <span className="font-semibold text-fg">GrowthOS</span>
             <button
@@ -121,22 +111,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
           </div>
-          <nav className="flex flex-col gap-1 p-3">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  isActiveRoute(pathname, item.href) ? "bg-muted text-fg" : "text-fg-muted hover:bg-muted hover:text-fg",
-                  collapsed && "justify-center px-0"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {!collapsed && <span>{item.label}</span>}
-              </Link>
-            ))}
-          </nav>
+          <Suspense fallback={null}>
+            <SidebarNav collapsed={collapsed} />
+          </Suspense>
           <div className="border-t border-line p-3">
             <select
               aria-label="Select company"
@@ -144,7 +121,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onChange={(event) => selectCompany(event.target.value)}
               className="w-full rounded-lg border border-line bg-bg px-3 py-1.5 text-sm text-fg"
             >
-              <option value="">{companies === null ? "Loading…" : companies.length === 0 ? "No companies" : "Select a company"}</option>
+              <option value="">
+                {companies === null
+                  ? "Loading…"
+                  : companies.length === 0
+                    ? "No companies"
+                    : "Select a company"}
+              </option>
               {companies?.map((company) => (
                 <option key={company.id} value={company.id}>
                   {company.name}
@@ -165,7 +148,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-full flex-1 flex-col">
           <header className="flex items-center justify-between gap-4 border-b border-line px-6 py-4">
             <div className="flex items-center gap-3">
-              <button type="button" aria-label="Open menu" onClick={() => setMobileMenuOpen(true)} className="text-fg-muted hover:text-fg md:hidden">
+              <button
+                type="button"
+                aria-label="Open menu"
+                onClick={() => setMobileMenuOpen(true)}
+                className="text-fg-muted hover:text-fg md:hidden"
+              >
                 <Menu className="h-6 w-6" />
               </button>
               <span className="text-sm font-semibold text-fg">GrowthOS</span>
@@ -177,7 +165,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onChange={(event) => selectCompany(event.target.value)}
                 className="rounded-lg border border-line bg-bg px-3 py-1.5 text-sm text-fg"
               >
-                <option value="">{companies === null ? "Loading…" : companies.length === 0 ? "No companies" : "Select a company"}</option>
+                <option value="">
+                  {companies === null
+                    ? "Loading…"
+                    : companies.length === 0
+                      ? "No companies"
+                      : "Select a company"}
+                </option>
                 {companies?.map((company) => (
                   <option key={company.id} value={company.id}>
                     {company.name}
@@ -194,5 +188,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </ToastProvider>
+  );
+}
+
+function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const pathname = usePathname();
+  return (
+    <Dialog open={open} onClose={onClose} title="Navigation" className="max-w-sm">
+      <nav className="flex flex-col gap-1">
+        {NAV_ITEMS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors",
+              isActiveRoute(pathname, item.href) ? "bg-muted text-fg" : "text-fg-muted hover:bg-muted hover:text-fg"
+            )}
+            onClick={() => onClose()}
+          >
+            <item.icon className="h-5 w-5" />
+            <span>{item.label}</span>
+          </Link>
+        ))}
+      </nav>
+    </Dialog>
+  );
+}
+
+function SidebarNav({ collapsed }: { collapsed: boolean }) {
+  const pathname = usePathname();
+  return (
+    <nav className="flex flex-col gap-1 p-3">
+      {NAV_ITEMS.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+            isActiveRoute(pathname, item.href)
+              ? "bg-muted text-fg"
+              : "text-fg-muted hover:bg-muted hover:text-fg",
+            collapsed && "justify-center px-0"
+          )}
+        >
+          <item.icon className="h-5 w-5" />
+          {!collapsed && <span>{item.label}</span>}
+        </Link>
+      ))}
+    </nav>
   );
 }
