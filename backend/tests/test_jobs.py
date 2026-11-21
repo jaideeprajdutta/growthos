@@ -1,6 +1,5 @@
 """Research job lifecycle and retry tests (app/research/jobs.py)."""
 
-import time
 from unittest.mock import patch
 
 import pytest
@@ -196,25 +195,21 @@ def test_recover_interrupted_runs_marks_active_jobs_failed(db, monkeypatch):
         session.close()
 
 
-def _wait_page_status(page_id, status, timeout=5.0):
-    session = TestSessionLocal()
-    try:
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            session.rollback()
-            page = session.get(ResearchPage, page_id)
-            current = page.status if page is not None else None
-            session.rollback()
-            if current == status:
-                return session.get(ResearchPage, page_id)
-            time.sleep(0.02)
-        return None
-    finally:
-        session.close()
+class _SyncThread:
+    """Deterministic stand-in for threading.Thread: runs the target immediately."""
+
+    def __init__(self, target=None, args=(), kwargs=None, daemon=False, name=""):
+        self._target = target
+
+    def start(self):
+        if self._target is not None:
+            self._target()
 
 
 def test_retry_failed_page_rescans(db, monkeypatch):
     monkeypatch.setattr(jobs, "SessionLocal", TestSessionLocal)
+    # Run the retry thread synchronously so final state is deterministic (no DB polling races).
+    monkeypatch.setattr(jobs, "threading", type("FakeThreading", (), {"Thread": _SyncThread}))
     company, run_id = _make_run(db)
     session = TestSessionLocal()
     page = ResearchPage(run_id=run_id, url="https://8.8.8.8/retry", status="failed", status_detail="earlier failure")
@@ -235,20 +230,19 @@ def test_retry_failed_page_rescans(db, monkeypatch):
     monkeypatch.setattr(jobs, "fetch_text", fetch_text)
     monkeypatch.setattr(jobs, "fetch_robots_policy", lambda url: RobotsPolicy(parser=None, allow_all=True))
     with patch.object(jobs, "crawl_site", return_value=[]):
-        retried = jobs.retry_failed_page(db, run_id, page_id, company.id)
-    # The background thread may race the readback; both states are valid.
-    assert retried.status in ("pending", "scanned")
+        jobs.retry_failed_page(db, run_id, page_id, company.id)
 
-    page = _wait_page_status(page_id, "scanned")
-    assert page is not None
+    db.expire_all()
+    page = db.get(ResearchPage, page_id)
     assert page.status == "scanned"
     assert page.title == "Retry Page"
     assert page.extracted_text
 
+    run = db.get(ResearchRun, run_id)
+    assert run.status == "completed"
+
     session = TestSessionLocal()
     try:
-        run = session.get(ResearchRun, run_id)
-        assert run.status == "completed"
         evidence = session.execute(
             select(Evidence).where(Evidence.source_url == "https://8.8.8.8/retry", Evidence.company_id == company.id)
         ).scalars().all()
