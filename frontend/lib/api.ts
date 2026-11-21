@@ -6,8 +6,20 @@ import type {
   CompanyProfileCreate,
   CompanyStats,
   CompanyUpdate,
+  ExecutionAction,
+  ExecutionActionCreate,
+  ExecutionActionUpdate,
+  Experiment,
+  ExperimentCreate,
+  ExperimentUpdate,
   GrowthObjective,
   GrowthObjectiveType,
+  Integration,
+  IntegrationCreate,
+  IntegrationUpdate,
+  Opportunity,
+  OpportunityCreate,
+  OpportunityUpdate,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -74,4 +86,37 @@ export const growthosApi = {
     request(`/companies/${encodeURIComponent(companyId)}/activity?limit=${limit}`),
 
   getCompanyStats: (id: string): Promise<CompanyStats> => request(`/companies/${encodeURIComponent(id)}/stats`),
+
+  listOpportunities: (companyId: string): Promise<Opportunity[]> => request(`/companies/${encodeURIComponent(companyId)}/opportunities`),
+  createOpportunity: (companyId: string, opportunity: OpportunityCreate): Promise<Opportunity> =>
+    request(`/companies/${encodeURIComponent(companyId)}/opportunities`, { method: "POST", body: JSON.stringify(opportunity) }),
+  updateOpportunity: (companyId: string, opportunityId: string, opportunity: OpportunityUpdate): Promise<Opportunity> =>
+    request(`/companies/${encodeURIComponent(companyId)}/opportunities/${encodeURIComponent(opportunityId)}`, { method: "PUT", body: JSON.stringify(opportunity) }),
+  deleteOpportunity: (companyId: string, opportunityId: string): Promise<void> =>
+    request(`/companies/${encodeURIComponent(companyId)}/opportunities/${encodeURIComponent(opportunityId)}`, { method: "DELETE" }),
+
+  listExperiments: (companyId: string): Promise<Experiment[]> => request(`/companies/${encodeURIComponent(companyId)}/experiments`),
+  createExperiment: (companyId: string, experiment: ExperimentCreate): Promise<Experiment> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments`, { method: "POST", body: JSON.stringify(experiment) }),
+  updateExperiment: (companyId: string, experimentId: string, experiment: ExperimentUpdate): Promise<Experiment> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}`, { method: "PUT", body: JSON.stringify(experiment) }),
+  deleteExperiment: (companyId: string, experimentId: string): Promise<void> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}`, { method: "DELETE" }),
+
+  listExecutionActions: (companyId: string): Promise<ExecutionAction[]> =>
+    request(`/companies/${encodeURIComponent(companyId)}/execution-actions`),
+  createExecutionAction: (companyId: string, action: ExecutionActionCreate): Promise<ExecutionAction> =>
+    request(`/companies/${encodeURIComponent(companyId)}/execution-actions`, { method: "POST", body: JSON.stringify(action) }),
+  updateExecutionAction: (companyId: string, actionId: string, action: ExecutionActionUpdate): Promise<ExecutionAction> =>
+    request(`/companies/${encodeURIComponent(companyId)}/execution-actions/${encodeURIComponent(actionId)}`, { method: "PUT", body: JSON.stringify(action) }),
+  deleteExecutionAction: (companyId: string, actionId: string): Promise<void> =>
+    request(`/companies/${encodeURIComponent(companyId)}/execution-actions/${encodeURIComponent(actionId)}`, { method: "DELETE" }),
+
+  listIntegrations: (companyId: string): Promise<Integration[]> => request(`/companies/${encodeURIComponent(companyId)}/integrations`),
+  createIntegration: (companyId: string, integration: IntegrationCreate): Promise<Integration> =>
+    request(`/companies/${encodeURIComponent(companyId)}/integrations`, { method: "POST", body: JSON.stringify(integration) }),
+  updateIntegration: (companyId: string, integrationId: string, integration: IntegrationUpdate): Promise<Integration> =>
+    request(`/companies/${encodeURIComponent(companyId)}/integrations/${encodeURIComponent(integrationId)}`, { method: "PUT", body: JSON.stringify(integration) }),
+  deleteIntegration: (companyId: string, integrationId: string): Promise<void> =>
+    request(`/companies/${encodeURIComponent(companyId)}/integrations/${encodeURIComponent(integrationId)}`, { method: "DELETE" }),
 };
