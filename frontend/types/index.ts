@@ -86,11 +86,39 @@ export interface ActivityLogEntry {
   createdAt: string;
 }
 
+export interface ExperimentAnalyticsSummary {
+  id: string;
+  name: string;
+  status: ExperimentStatus;
+  opportunityId: string | null;
+  opportunityTitle: string | null;
+  learningOutcome: LearningOutcome | null;
+  latestMeasurement: ExperimentResult | null;
+  tasksTotal: number;
+  tasksCompleted: number;
+  tasksAwaitingApproval: number;
+}
+
 export interface CompanyStats {
   companyId: string;
   opportunities: number;
   runningExperiments: number;
   objectives: number;
+  totalExperiments: number;
+  completedExperiments: number;
+  experimentsByStatus: Record<string, number>;
+  opportunitiesByStatus: Record<string, number>;
+  outcomesBySource: Record<string, number>;
+  tasksTotal: number;
+  tasksCompleted: number;
+  tasksInProgress: number;
+  tasksBlocked: number;
+  tasksAwaitingApproval: number;
+  measurementsRecorded: number;
+  successfulExperiments: number;
+  unsuccessfulExperiments: number;
+  inconclusiveExperiments: number;
+  experimentSummaries: ExperimentAnalyticsSummary[];
 }
 
 export type OpportunityStatus = "proposed" | "prioritized" | "selected" | "in_progress" | "completed" | "rejected" | "discovered" | "reviewing" | "approved" | "experimenting" | "implemented" | "archived" | "deferred";
@@ -239,6 +267,11 @@ export interface AIStatus {
 }
 
 export type ExperimentStatus = "proposed" | "approved" | "running" | "completed" | "paused" | "cancelled";
+export type ExperimentTaskStatus = "pending" | "in_progress" | "completed" | "blocked";
+export type TaskApprovalStatus = "not_required" | "pending" | "approved" | "rejected";
+export type LearningOutcome = "successful" | "unsuccessful" | "inconclusive";
+export type MeasurementDataSource = "user_entered" | "imported" | "connected_source" | "estimate";
+export type MeasurementDirection = "increase" | "decrease";
 
 export type ExecutionActionStatus = "pending" | "approved" | "scheduled" | "in_progress" | "executed" | "failed" | "paused" | "cancelled";
 
@@ -268,6 +301,11 @@ export interface Opportunity {
   priorityScore: number | null;
   status: OpportunityStatus;
   recommendedNextAction: string;
+  lastLearningOutcome: LearningOutcome | null;
+  lastLearningSummary: string | null;
+  outcomeAdjustment: number | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface OpportunityCreate {
@@ -285,9 +323,22 @@ export interface OpportunityCreate {
 
 export type OpportunityUpdate = Partial<OpportunityCreate>;
 
+export interface ExperimentDecision {
+  from: ExperimentStatus | null;
+  to: ExperimentStatus;
+  status: ExperimentStatus;
+  actor: string;
+  at: string;
+  note: string;
+}
+
 export interface Experiment {
   id: string;
   companyId: string;
+  opportunityId: string | null;
+  diagnosticFindingId: string | null;
+  name: string;
+  description: string;
   hypothesis: string;
   problem: string;
   action: string;
@@ -295,13 +346,24 @@ export interface Experiment {
   successMetric: string;
   baseline: string;
   target: string;
+  guardrailMetrics: string[];
   startDate: string | null;
   endDate: string | null;
+  owner: string;
   status: ExperimentStatus;
+  decisionHistory: ExperimentDecision[];
+  approvedAt: string | null;
+  approvedBy: string | null;
+  completedAt: string | null;
+  outcome: LearningOutcome | null;
   actualOutcome: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ExperimentCreate {
+  name?: string;
+  description?: string;
   hypothesis: string;
   problem?: string;
   action?: string;
@@ -309,12 +371,21 @@ export interface ExperimentCreate {
   successMetric?: string;
   baseline?: string;
   target?: string;
+  guardrailMetrics?: string[];
   startDate?: string;
   endDate?: string;
+  owner?: string;
   status?: ExperimentStatus;
+  opportunityId?: string;
+  diagnosticFindingId?: string;
 }
 
-export type ExperimentUpdate = Partial<ExperimentCreate>;
+export type ExperimentUpdate = Partial<ExperimentCreate> & { actualOutcome?: string };
+
+export interface ExperimentStatusUpdate {
+  status: ExperimentStatus;
+  note?: string;
+}
 
 export interface ExecutionAction {
   id: string;
@@ -352,3 +423,153 @@ export interface IntegrationCreate {
 }
 
 export type IntegrationUpdate = Partial<IntegrationCreate>;
+
+export interface TaskNote {
+  at: string;
+  actor: string;
+  kind: "status" | "note" | "approval";
+  text: string;
+}
+
+export interface ExperimentTask {
+  id: string;
+  companyId: string;
+  experimentId: string;
+  title: string;
+  description: string;
+  owner: string;
+  dueDate: string | null;
+  status: ExperimentTaskStatus;
+  requiresApproval: boolean;
+  approvalStatus: TaskApprovalStatus;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  executedBy: string | null;
+  executedAt: string | null;
+  notes: TaskNote[];
+  evidenceIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExperimentTaskCreate {
+  title: string;
+  description?: string;
+  owner?: string;
+  dueDate?: string;
+  requiresApproval?: boolean;
+}
+
+export type ExperimentTaskUpdate = Partial<ExperimentTaskCreate>;
+
+export interface TaskStatusUpdate {
+  status: ExperimentTaskStatus;
+  note?: string;
+}
+
+export interface TaskNoteCreate {
+  note: string;
+  evidenceIds?: string[];
+}
+
+export interface MeasurementRow {
+  rowNumber?: number;
+  baselineValue: number;
+  observedValue: number;
+  targetValue: number;
+  direction: MeasurementDirection;
+  measurementStart?: string | null;
+  measurementEnd?: string | null;
+  sourceName?: string;
+  notes?: string;
+}
+
+export interface CsvPreview {
+  headers: string[];
+  rows: MeasurementRow[];
+  errors: string[];
+}
+
+export interface MeasurementImport {
+  rows: MeasurementRow[];
+  sourceName: string;
+}
+
+export interface ExperimentResult {
+  id: string;
+  companyId: string;
+  experimentId: string;
+  outcome: string;
+  metrics: Record<string, unknown> | null;
+  baselineValue: number | null;
+  observedValue: number | null;
+  targetValue: number | null;
+  direction: MeasurementDirection;
+  measurementStart: string | null;
+  measurementEnd: string | null;
+  dataSource: MeasurementDataSource;
+  sourceName: string;
+  evidenceIds: string[];
+  notes: string;
+  interpretation: string;
+  recordedBy: string;
+  recordedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  absoluteChange: number | null;
+  percentChange: number | null;
+  targetAttainmentPct: number | null;
+  metTarget: boolean | null;
+}
+
+export interface ExperimentResultCreate {
+  outcome?: string;
+  baselineValue?: number | null;
+  observedValue?: number | null;
+  targetValue?: number | null;
+  direction?: MeasurementDirection;
+  measurementStart?: string;
+  measurementEnd?: string;
+  dataSource?: MeasurementDataSource;
+  sourceName?: string;
+  evidenceIds?: string[];
+  notes?: string;
+  interpretation?: string;
+}
+
+export type ExperimentResultUpdate = Partial<ExperimentResultCreate>;
+
+export interface ExperimentLearning {
+  id: string;
+  companyId: string;
+  experimentId: string;
+  outcome: LearningOutcome;
+  metTarget: boolean | null;
+  whatChanged: string;
+  evidenceIds: string[];
+  whatWorked: string;
+  whatFailed: string;
+  nextSteps: string;
+  recordedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExperimentLearningCreate {
+  outcome: LearningOutcome;
+  metTarget?: boolean | null;
+  whatChanged?: string;
+  evidenceIds?: string[];
+  whatWorked?: string;
+  whatFailed?: string;
+  nextSteps?: string;
+}
+
+export type ExperimentLearningUpdate = Partial<ExperimentLearningCreate>;
+
+export interface ExperimentDetail {
+  experiment: Experiment;
+  tasks: ExperimentTask[];
+  results: ExperimentResult[];
+  learning: ExperimentLearning | null;
+}

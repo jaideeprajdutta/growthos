@@ -13,8 +13,20 @@ import type {
   ExecutionAction,
   ExecutionActionCreate,
   ExecutionActionUpdate,
+  CsvPreview,
   Experiment,
   ExperimentCreate,
+  ExperimentDetail,
+  ExperimentLearning,
+  ExperimentLearningCreate,
+  ExperimentLearningUpdate,
+  ExperimentResult,
+  ExperimentResultCreate,
+  ExperimentResultUpdate,
+  ExperimentStatusUpdate,
+  ExperimentTask,
+  ExperimentTaskCreate,
+  ExperimentTaskUpdate,
   ExperimentUpdate,
   GrowthObjective,
   GrowthObjectiveType,
@@ -24,12 +36,15 @@ import type {
   IntelligenceProfile,
   IntelligenceReport,
   LinkEvidenceOut,
+  MeasurementImport,
   Opportunity,
   OpportunityCreate,
   OpportunityDetail,
   OpportunityUpdate,
   ResearchPage,
   ResearchRun,
+  TaskNoteCreate,
+  TaskStatusUpdate,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8300";
@@ -112,6 +127,113 @@ export const growthosApi = {
     request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}`, { method: "PUT", body: JSON.stringify(experiment) }),
   deleteExperiment: (companyId: string, experimentId: string): Promise<void> =>
     request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}`, { method: "DELETE" }),
+
+  getExperimentDetail: (companyId: string, experimentId: string): Promise<ExperimentDetail> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}`),
+  changeExperimentStatus: (companyId: string, experimentId: string, update: ExperimentStatusUpdate): Promise<Experiment> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/status`, {
+      method: "POST",
+      body: JSON.stringify(update),
+    }),
+
+  listTasks: (companyId: string, experimentId: string): Promise<ExperimentTask[]> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/tasks`),
+  createTask: (companyId: string, experimentId: string, task: ExperimentTaskCreate): Promise<ExperimentTask> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/tasks`, {
+      method: "POST",
+      body: JSON.stringify(task),
+    }),
+  updateTask: (companyId: string, experimentId: string, taskId: string, task: ExperimentTaskUpdate): Promise<ExperimentTask> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/tasks/${encodeURIComponent(taskId)}`, {
+      method: "PUT",
+      body: JSON.stringify(task),
+    }),
+  deleteTask: (companyId: string, experimentId: string, taskId: string): Promise<void> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/tasks/${encodeURIComponent(taskId)}`, {
+      method: "DELETE",
+    }),
+  changeTaskStatus: (
+    companyId: string,
+    experimentId: string,
+    taskId: string,
+    update: TaskStatusUpdate
+  ): Promise<ExperimentTask> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/tasks/${encodeURIComponent(taskId)}/status`, {
+      method: "POST",
+      body: JSON.stringify(update),
+    }),
+  approveTask: (companyId: string, experimentId: string, taskId: string, note?: string): Promise<ExperimentTask> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/tasks/${encodeURIComponent(taskId)}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ note: note ?? "" }),
+    }),
+  rejectTask: (companyId: string, experimentId: string, taskId: string, note?: string): Promise<ExperimentTask> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/tasks/${encodeURIComponent(taskId)}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ note: note ?? "" }),
+    }),
+  addTaskNote: (companyId: string, experimentId: string, taskId: string, note: TaskNoteCreate): Promise<ExperimentTask> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/tasks/${encodeURIComponent(taskId)}/notes`, {
+      method: "POST",
+      body: JSON.stringify(note),
+    }),
+
+  createMeasurement: (
+    companyId: string,
+    experimentId: string,
+    result: ExperimentResultCreate
+  ): Promise<ExperimentResult> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/results`, {
+      method: "POST",
+      body: JSON.stringify(result),
+    }),
+  listMeasurements: (companyId: string, experimentId: string): Promise<ExperimentResult[]> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/results`),
+  updateMeasurement: (
+    companyId: string,
+    experimentId: string,
+    resultId: string,
+    result: ExperimentResultUpdate
+  ): Promise<ExperimentResult> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/results/${encodeURIComponent(resultId)}`, {
+      method: "PUT",
+      body: JSON.stringify(result),
+    }),
+  deleteMeasurement: (companyId: string, experimentId: string, resultId: string): Promise<void> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/results/${encodeURIComponent(resultId)}`, {
+      method: "DELETE",
+    }),
+  previewMeasurementCsv: (companyId: string, experimentId: string, csv: string): Promise<CsvPreview> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/results/preview-csv`, {
+      method: "POST",
+      body: JSON.stringify({ csv }),
+    }),
+  importMeasurements: (
+    companyId: string,
+    experimentId: string,
+    importData: MeasurementImport
+  ): Promise<ExperimentResult[]> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/results/import`, {
+      method: "POST",
+      body: JSON.stringify(importData),
+    }),
+
+  getLearning: (companyId: string, experimentId: string): Promise<ExperimentLearning | null> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/learning`),
+  createLearning: (companyId: string, experimentId: string, learning: ExperimentLearningCreate): Promise<ExperimentLearning> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/learning`, {
+      method: "POST",
+      body: JSON.stringify(learning),
+    }),
+  updateLearning: (
+    companyId: string,
+    experimentId: string,
+    learning: ExperimentLearningUpdate
+  ): Promise<ExperimentLearning> =>
+    request(`/companies/${encodeURIComponent(companyId)}/experiments/${encodeURIComponent(experimentId)}/learning`, {
+      method: "PUT",
+      body: JSON.stringify(learning),
+    }),
 
   listExecutionActions: (companyId: string): Promise<ExecutionAction[]> =>
     request(`/companies/${encodeURIComponent(companyId)}/execution-actions`),

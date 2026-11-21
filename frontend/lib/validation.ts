@@ -72,9 +72,30 @@ export const growthObjectivesSchema = z.array(growthObjectiveSchema).min(1, "Add
 
 export const OPPORTUNITY_STATUSES = ["proposed", "prioritized", "selected", "in_progress", "completed", "rejected", "discovered", "reviewing", "approved", "experimenting", "implemented", "archived", "deferred"] as const;
 export const EXPERIMENT_STATUSES = ["proposed", "approved", "running", "completed", "paused", "cancelled"] as const;
+export const EXPERIMENT_TASK_STATUSES = ["pending", "in_progress", "completed", "blocked"] as const;
+export const TASK_APPROVAL_STATUSES = ["not_required", "pending", "approved", "rejected"] as const;
+export const LEARNING_OUTCOMES = ["successful", "unsuccessful", "inconclusive"] as const;
+export const MEASUREMENT_DATA_SOURCES = ["user_entered", "imported", "connected_source", "estimate"] as const;
+export const MEASUREMENT_DIRECTIONS = ["increase", "decrease"] as const;
 export const EXECUTION_ACTION_STATUSES = ["pending", "approved", "scheduled", "in_progress", "executed", "failed", "paused", "cancelled"] as const;
 export const INTEGRATION_PROVIDERS = ["google_analytics", "google_search_console", "hubspot", "shopify", "stripe", "meta_ads", "google_ads", "crm", "other"] as const;
 export const INTEGRATION_STATUSES = ["configured", "connected", "disconnected", "error"] as const;
+
+export const EXPERIMENT_TRANSITIONS: Record<string, readonly string[]> = {
+  proposed: ["approved", "cancelled"],
+  approved: ["running", "paused", "cancelled"],
+  running: ["paused", "completed", "cancelled"],
+  paused: ["running", "cancelled"],
+  completed: [],
+  cancelled: [],
+};
+
+export const TASK_TRANSITIONS: Record<string, readonly string[]> = {
+  pending: ["in_progress", "blocked"],
+  in_progress: ["completed", "blocked", "pending"],
+  blocked: ["in_progress", "pending"],
+  completed: [],
+};
 
 export const opportunitySchema = z.object({
   title: z.string().min(1, "Title is required.").max(200, "Titles can be at most 200 characters."),
@@ -89,18 +110,29 @@ export const opportunitySchema = z.object({
   recommendedNextAction: shortText(2000).optional(),
 });
 
-export const experimentSchema = z.object({
-  hypothesis: z.string().min(1, "Hypothesis is required.").max(1000),
-  problem: shortText(2000).optional(),
-  action: shortText(2000).optional(),
-  targetAudience: shortText(2000).optional(),
-  successMetric: shortText(2000).optional(),
-  baseline: shortText(2000).optional(),
-  target: shortText(2000).optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  status: z.enum(EXPERIMENT_STATUSES).default("proposed"),
-});
+export const experimentSchema = z
+  .object({
+    name: shortText(200).optional(),
+    description: shortText(4000).optional(),
+    hypothesis: z.string().min(1, "Hypothesis is required.").max(1000),
+    problem: shortText(2000).optional(),
+    action: shortText(2000).optional(),
+    targetAudience: shortText(2000).optional(),
+    successMetric: shortText(2000).optional(),
+    baseline: shortText(2000).optional(),
+    target: shortText(2000).optional(),
+    guardrailMetrics: z.array(shortText(200)).max(20).default([]),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    owner: shortText(200).optional(),
+    status: z.enum(EXPERIMENT_STATUSES).default("proposed"),
+    opportunityId: z.string().optional(),
+    diagnosticFindingId: z.string().optional(),
+  })
+  .refine((data) => !data.startDate || !data.endDate || data.endDate >= data.startDate, {
+    message: "End date must be after the start date.",
+    path: ["endDate"],
+  });
 
 export const executionActionSchema = z.object({
   title: z.string().min(1, "Title is required.").max(200),
@@ -113,4 +145,63 @@ export const integrationSchema = z.object({
   status: z.enum(INTEGRATION_STATUSES),
   settings: z.string().optional(),
   connectedAt: z.string().optional(),
+});
+
+export const experimentTaskSchema = z.object({
+  title: z.string().min(1, "Task title is required.").max(200),
+  description: shortText(2000).optional(),
+  owner: shortText(200).optional(),
+  dueDate: z.string().optional(),
+  requiresApproval: z.boolean().default(true),
+});
+
+export const taskNoteSchema = z.object({
+  note: z.string().min(1, "Add a note before saving.").max(2000),
+  evidenceIds: z.array(z.string()).default([]),
+});
+
+const numberOrNull = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined ? null : typeof value === "number" ? value : Number(value)),
+  z.number().finite().nullable()
+);
+
+const requiredNumber = z.preprocess(
+  (value) => (typeof value === "number" ? value : Number(value)),
+  z.number().finite()
+);
+
+export const measurementSchema = z
+  .object({
+    outcome: shortText(2000).optional(),
+    baselineValue: numberOrNull,
+    observedValue: requiredNumber,
+    targetValue: numberOrNull,
+    direction: z.enum(MEASUREMENT_DIRECTIONS).default("increase"),
+    measurementStart: z.string().optional(),
+    measurementEnd: z.string().optional(),
+    dataSource: z.enum(MEASUREMENT_DATA_SOURCES).default("user_entered"),
+    sourceName: shortText(200).optional(),
+    evidenceIds: z.array(z.string()).default([]),
+    notes: shortText(2000).optional(),
+    interpretation: shortText(4000).optional(),
+  })
+  .refine((data) => !data.measurementStart || !data.measurementEnd || data.measurementEnd >= data.measurementStart, {
+    message: "Measurement end must be after the start.",
+    path: ["measurementEnd"],
+  });
+
+export const csvTextSchema = z.string().min(1, "Paste CSV data to preview.").max(1_000_000);
+
+export const learningSchema = z.object({
+  outcome: z.enum(LEARNING_OUTCOMES),
+  metTarget: z.union([z.boolean(), z.null()]).default(null),
+  whatChanged: shortText(4000),
+  evidenceIds: z.array(z.string()).default([]),
+  whatWorked: shortText(4000),
+  whatFailed: shortText(4000),
+  nextSteps: shortText(4000),
+});
+
+export const statusNoteSchema = z.object({
+  note: shortText(2000).optional(),
 });

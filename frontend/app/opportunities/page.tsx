@@ -21,6 +21,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { EvidenceViewer } from "@/components/shared/evidence-viewer";
 import { useToast } from "@/components/ui/toast";
 import { OPPORTUNITY_STATUSES } from "@/lib/validation";
+import { humanLabel } from "@/lib/utils";
 import type { Evidence, Opportunity, OpportunityCreate, OpportunityDetail, OpportunityStatus, OpportunityUpdate } from "@/types";
 
 const OPPORTUNITY_STATUS_LABELS: Record<string, string> = {
@@ -246,6 +247,7 @@ export default function OpportunitiesPage() {
               <TableHead>Confidence</TableHead>
               <TableHead>Effort</TableHead>
               <TableHead>Priority</TableHead>
+              <TableHead>Learning</TableHead>
               <TableHead>Recommended action</TableHead>
               <TableHead />
             </TableRow>
@@ -258,6 +260,7 @@ export default function OpportunitiesPage() {
                 <TableCell>{opportunity.confidence}%</TableCell>
                 <TableCell>{opportunity.effort}</TableCell>
                 <TableCell>{opportunity.priorityScore ?? "—"}</TableCell>
+                <TableCell>{opportunity.lastLearningOutcome ? <StatusBadge status={opportunity.lastLearningOutcome} /> : <span className="text-fg-muted">—</span>}</TableCell>
                 <TableCell className="max-w-sm truncate text-fg-muted">{opportunity.recommendedNextAction || "—"}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -303,6 +306,18 @@ export default function OpportunitiesPage() {
               <span>Confidence {detail.opportunity.confidence}% · Effort {detail.opportunity.effort} · Priority {detail.opportunity.priorityScore ?? "—"}</span>
               <span>Recommended: {detail.opportunity.recommendedNextAction || "—"}</span>
             </div>
+            {detail.opportunity.lastLearningOutcome ? (
+              <div className="rounded-lg border border-line bg-bg-muted p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-fg-muted">Learning feedback</p>
+                  <StatusBadge status={detail.opportunity.lastLearningOutcome} />
+                  {detail.opportunity.outcomeAdjustment !== null ? (
+                    <span className="text-xs text-fg-muted">Priority adjustment {detail.opportunity.outcomeAdjustment > 0 ? "+" : ""}{detail.opportunity.outcomeAdjustment}</span>
+                  ) : null}
+                </div>
+                <p className="mt-2 text-sm text-fg">{detail.opportunity.lastLearningSummary || humanLabel(detail.opportunity.lastLearningOutcome)}</p>
+              </div>
+            ) : null}
           </div>
           <div className="space-y-2">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-fg-muted">Linked experiments</h4>

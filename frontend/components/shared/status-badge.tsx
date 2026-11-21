@@ -21,6 +21,9 @@ const COLORS: Record<string, "default" | "blue" | "green" | "amber" | "red"> = {
   implemented: "green",
   archived: "default",
   deferred: "amber",
+  successful: "green",
+  unsuccessful: "red",
+  inconclusive: "amber",
 };
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
