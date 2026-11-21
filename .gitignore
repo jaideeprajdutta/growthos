@@ -16,6 +16,8 @@ frontend/next-env.d.ts
 coverage/
 
 # misc
+test-results/
+frontend/test-results/
 .DS_Store
 *.pem
 *.tsbuildinfo

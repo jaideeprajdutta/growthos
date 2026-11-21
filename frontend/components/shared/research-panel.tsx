@@ -24,16 +24,23 @@ export function ResearchPanel({ company }: { company: Company }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [pollTimedOut, setPollTimedOut] = useState(false);
+  const [lastRun, setLastRun] = useState<ResearchRun | null>(null);
 
   const runs = useApi<ResearchRun[]>(() => api.listResearchRuns(company.id), `research-runs-${company.id}-${refreshKey}`);
   const latestRun = (runId ? runs.data?.find((run) => run.id === runId) : null) ?? runs.data?.[0] ?? null;
+  // Keep the last known run while the runs list is temporarily unavailable.
+  const activeRun = latestRun ?? lastRun;
   const pages = useApi<ResearchPage[]>(
-    latestRun ? () => api.listResearchPages(company.id, latestRun.id) : null,
-    `research-pages-${company.id}-${latestRun?.id}-${refreshKey}`
+    activeRun ? () => api.listResearchPages(company.id, activeRun.id) : null,
+    `research-pages-${company.id}-${activeRun?.id}-${refreshKey}`
   );
 
+  useEffect(() => {
+    if (latestRun) setLastRun(latestRun);
+  }, [latestRun]);
+
   // The run we are actively polling: a non-terminal run after refresh.
-  const pollingRunId = latestRun && !TERMINAL_STATUSES.has(latestRun.status) && !pollTimedOut ? latestRun.id : null;
+  const pollingRunId = activeRun && !TERMINAL_STATUSES.has(activeRun.status) && !pollTimedOut ? activeRun.id : null;
 
   // Bounded polling: refresh the runs list every few seconds until the run is terminal.
   useEffect(() => {
@@ -116,9 +123,9 @@ export function ResearchPanel({ company }: { company: Company }) {
         {startError ? <p className="text-sm text-destructive">{startError}</p> : null}
         {runs.loading ? (
           <Skeleton className="h-8 w-64" />
-        ) : runs.error ? (
+        ) : runs.error && !activeRun ? (
           <p className="text-sm text-destructive">{runs.error}</p>
-        ) : !latestRun ? (
+        ) : !activeRun ? (
           <EmptyState
             title="No research yet"
             description="Start research to crawl the company's public website: sitemap discovery, robots.txt compliance, a BFS crawl and per-page extracted evidence."
@@ -126,12 +133,12 @@ export function ResearchPanel({ company }: { company: Company }) {
         ) : (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="max-w-md truncate text-fg-muted">Source: {latestRun.sourceUrl}</span>
-              <StatusBadge status={latestRun.status} />
-              <span className="text-fg-muted">{latestRun.pagesScanned} pages scanned</span>
+              <span className="max-w-md truncate text-fg-muted">Source: {activeRun.sourceUrl}</span>
+              <StatusBadge status={activeRun.status} />
+              <span className="text-fg-muted">{activeRun.pagesScanned} pages scanned</span>
               {pollingRunId ? <span className="text-xs text-fg-muted">updating automatically…</span> : null}
-              {pollTimedOut && latestRun.status !== "failed" ? <span className="text-xs text-fg-muted">polling paused — press Refresh to resume</span> : null}
-              {latestRun.errorMessage && <span className="text-destructive">{latestRun.errorMessage}</span>}
+              {pollTimedOut && activeRun.status !== "failed" ? <span className="text-xs text-fg-muted">polling paused — press Refresh to resume</span> : null}
+              {activeRun.errorMessage && <span className="text-destructive">{activeRun.errorMessage}</span>}
             </div>
             {retryError ? <p className="text-sm text-destructive">{retryError}</p> : null}
             <Table>
@@ -158,7 +165,7 @@ export function ResearchPanel({ company }: { company: Company }) {
                 ))}
               </TableBody>
             </Table>
-            {TERMINAL_STATUSES.has(latestRun.status) && (pages.data ?? []).length === 0 ? (
+            {TERMINAL_STATUSES.has(activeRun.status) && (pages.data ?? []).length === 0 ? (
               <EmptyState
                 title="No pages found"
                 description="This website-research run finished with no pages. Try starting research again with a different URL."

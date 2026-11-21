@@ -147,6 +147,7 @@ export default function OpportunitiesPage() {
         await growthosApi.createOpportunity(companyId, values as unknown as OpportunityCreate);
         toast.success("Opportunity created");
       }
+      setListKey((key) => key + 1);
       setDialogOpen(false);
       setEditing(null);
       form.reset(DEFAULT_DIALOG_VALUES);
@@ -162,6 +163,7 @@ export default function OpportunitiesPage() {
     try {
       await growthosApi.deleteOpportunity(companyId, opportunityId);
       toast.success("Opportunity deleted");
+      setListKey((key) => key + 1);
       setConfirmDeleteId(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete the opportunity.");

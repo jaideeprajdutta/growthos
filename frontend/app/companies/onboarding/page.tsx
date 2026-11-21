@@ -173,8 +173,8 @@ export default function OnboardingPage() {
       <Card className="mb-6 space-y-4 p-6">
         {step === 0 && (
           <div className="space-y-4">
-            <Input label="Company name" {...form.register("name")} error={form.formState.errors.name?.message} />
-            <Input label="Website" placeholder="https://example.com" {...form.register("website")} error={form.formState.errors.website?.message} />
+            <Input aria-label="Company name" label="Company name" {...form.register("name")} error={form.formState.errors.name?.message} />
+            <Input aria-label="Website" label="Website" placeholder="https://example.com" {...form.register("website")} error={form.formState.errors.website?.message} />
             <Select
               label="Business model"
               value={form.watch("businessModel")}

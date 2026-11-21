@@ -24,5 +24,6 @@ const COLORS: Record<string, "default" | "blue" | "green" | "amber" | "red"> = {
 };
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
-  return <Badge color={COLORS[status] ?? "default"} className={className}>{status.replace(/_/g, " ")}</Badge>;
+  const label = status.replace(/_/g, " ").replace(/(^|\s)\w/g, (char) => char.toUpperCase());
+  return <Badge color={COLORS[status] ?? "default"} className={className}>{label}</Badge>;
 }
