@@ -26,3 +26,4 @@ coverage/
 
 # sqlite dev databases
 *.db
+frontend/frontend-dev.log

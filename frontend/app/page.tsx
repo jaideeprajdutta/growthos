@@ -5,9 +5,9 @@ import { ArrowRight } from "lucide-react";
 import { useActiveCompany } from "@/hooks/use-active-company";
 import { useApi } from "@/hooks/use-api";
 import { growthosApi } from "@/lib/api";
-import type { ActivityLogEntry, ExecutionAction, Experiment, GrowthObjective, Opportunity } from "@/types";
+import type { ActivityLogEntry, ExecutionAction, Experiment, GrowthObjective, IntelligenceProfile, Opportunity, ResearchRun } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -37,6 +37,8 @@ export default function OverviewPage() {
   const objectives = useApi<GrowthObjective[]>(companyId ? () => growthosApi.listGrowthObjectives(companyId) : null, "company-objectives");
   const activity = useApi<ActivityLogEntry[]>(companyId ? () => growthosApi.listActivity(companyId) : null, "company-activity");
   const actions = useApi<ExecutionAction[]>(companyId ? () => growthosApi.listExecutionActions(companyId) : null, "company-actions");
+  const researchRuns = useApi<ResearchRun[]>(companyId ? () => growthosApi.listResearchRuns(companyId) : null, "company-research");
+  const intelligence = useApi<IntelligenceProfile | null>(companyId ? () => growthosApi.getIntelligenceProfile(companyId) : null, "company-intelligence");
 
   const loading = loadingCompany || (!activeCompany && !companyError);
   const opportunitiesList = opportunities.data ?? [];
@@ -132,6 +134,29 @@ export default function OverviewPage() {
                 </TableBody>
               </Table>
             )}
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-fg">Research & intelligence</h3>
+                <Link href="/bi" className="text-xs text-fg-muted hover:text-fg">Business Intelligence</Link>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p className="text-fg-muted">
+                Research: {researchRuns.loading
+                  ? "…"
+                  : researchRuns.data?.[0]
+                    ? `${researchRuns.data[0].pagesScanned} pages — ${researchRuns.data[0].status}`
+                    : "not started"}
+              </p>
+              <p className="text-fg-muted">
+                Intelligence profile: {intelligence.data
+                  ? `v${intelligence.data.version}${intelligence.data.refreshedAt ? `, updated ${new Date(intelligence.data.refreshedAt).toLocaleDateString()}` : ""}`
+                  : "not generated"}
+              </p>
+            </CardContent>
           </Card>
 
           <Card>

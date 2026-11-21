@@ -18,9 +18,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { EvidenceViewer } from "@/components/shared/evidence-viewer";
 import { useToast } from "@/components/ui/toast";
 import { OPPORTUNITY_STATUSES } from "@/lib/validation";
-import type { Opportunity, OpportunityCreate, OpportunityUpdate } from "@/types";
+import type { Evidence, Opportunity, OpportunityCreate, OpportunityDetail, OpportunityStatus, OpportunityUpdate } from "@/types";
 
 const OPPORTUNITY_STATUS_LABELS: Record<string, string> = {
   proposed: "Proposed",
@@ -70,6 +71,47 @@ export default function OpportunitiesPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const toast = useToast();
+
+  const [detail, setDetail] = useState<OpportunityDetail | null>(null);
+  const [statusDraft, setStatusDraft] = useState<OpportunityStatus>("proposed");
+  const [updating, setUpdating] = useState(false);
+  const evidence = useApi<Evidence[]>(detail ? () => growthosApi.listEvidence(companyId) : null, detail ? `opp-evidence-${detail.opportunity.id}` : "opp-evidence");
+
+  async function openDetail(opportunityId: string) {
+    try {
+      const loaded = await growthosApi.getOpportunityDetail(companyId, opportunityId);
+      setDetail(loaded);
+      setStatusDraft(loaded.opportunity.status);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load the opportunity.");
+    }
+  }
+
+  async function updateStatus() {
+    if (!detail || updating) return;
+    setUpdating(true);
+    try {
+      await growthosApi.updateOpportunityStatus(companyId, detail.opportunity.id, statusDraft);
+      toast.success(`Status updated to ${statusDraft}.`);
+      const reloaded = await growthosApi.getOpportunityDetail(companyId, detail.opportunity.id);
+      setDetail(reloaded);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update the status.");
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function createExperimentFor(opportunityId: string) {
+    try {
+      await growthosApi.createExperimentForOpportunity(companyId, opportunityId);
+      toast.success("Experiment created — linked to the opportunity.");
+      const reloaded = await growthosApi.getOpportunityDetail(companyId, opportunityId);
+      setDetail(reloaded);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create the experiment.");
+    }
+  }
 
   const form = useOpportunityForm();
   const submittingNow = submitting;
@@ -184,6 +226,7 @@ export default function OpportunitiesPage() {
                 <TableCell className="max-w-sm truncate text-fg-muted">{opportunity.recommendedNextAction || "—"}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
+                    <button type="button" aria-label={`View ${opportunity.title}`} onClick={() => void openDetail(opportunity.id)} className="rounded-lg p-1.5 text-fg-muted hover:bg-muted hover:text-fg"><span className="sr-only">View</span><EyeIcon /></button>
                     <button type="button" aria-label={`Edit ${opportunity.title}`} onClick={() => { setEditing(opportunity); setDialogOpen(true); form.reset({ title: opportunity.title, description: opportunity.description, supportingEvidence: opportunity.supportingEvidence, expectedImpact: opportunity.expectedImpact, confidence: opportunity.confidence, effort: opportunity.effort, risk: opportunity.risk, priorityScore: opportunity.priorityScore, status: opportunity.status, recommendedNextAction: opportunity.recommendedNextAction }); }} className="rounded-lg p-1.5 text-fg-muted hover:bg-muted hover:text-fg"><span className="sr-only">Edit</span><PencilIcon /></button>
                     <button type="button" aria-label={`Delete ${opportunity.title}`} onClick={() => setConfirmDeleteId(opportunity.id)} className="rounded-lg p-1.5 text-fg-muted hover:bg-muted hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
                   </div>
@@ -217,6 +260,48 @@ export default function OpportunitiesPage() {
         </div>
       </Dialog>
 
+      {detail && <Dialog open onClose={() => setDetail(null)} title={detail.opportunity.title}>
+        <div className="space-y-4">
+          <div className="space-y-1 text-sm">
+            <p className="text-fg-muted">{detail.opportunity.description}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted">
+              <span>Confidence {detail.opportunity.confidence}% · Effort {detail.opportunity.effort} · Priority {detail.opportunity.priorityScore ?? "—"}</span>
+              <span>Recommended: {detail.opportunity.recommendedNextAction || "—"}</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-fg-muted">Linked experiments</h4>
+            {detail.experiments.length === 0 ? (
+              <p className="text-sm text-fg-muted">No experiments yet.</p>
+            ) : (
+              <Table>
+                <TableHeader><TableRow><TableHead>Experiment</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {detail.experiments.map((experiment) => (
+                    <TableRow key={experiment.id}>
+                      <TableCell className="max-w-sm truncate font-medium text-fg">{experiment.hypothesis}</TableCell>
+                      <TableCell><StatusBadge status={experiment.status} /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            <Button variant="primary" onClick={() => void createExperimentFor(detail.opportunity.id)}>Create experiment</Button>
+          </div>
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-fg-muted">Status transition</h4>
+            <div className="flex gap-2">
+              <Select value={statusDraft} onChange={(value) => setStatusDraft(value as OpportunityStatus)} options={OPPORTUNITY_STATUSES.map((status) => ({ value: status, label: OPPORTUNITY_STATUS_LABELS[status] ?? status }))} />
+              <Button disabled={updating} onClick={() => void updateStatus()}>Update status</Button>
+            </div>
+          </div>
+          <EvidenceViewer evidence={(evidence.data ?? []).filter((item) => detail.evidenceIds.includes(item.id))} />
+          <div className="flex justify-end">
+            <Button variant="secondary" onClick={() => setDetail(null)}>Close</Button>
+          </div>
+        </div>
+      </Dialog>}
+
       <Dialog open={Boolean(confirmDeleteId)} onClose={() => setConfirmDeleteId(null)} title="Delete opportunity" description={`Delete ${opportunities?.find((o) => o.id === confirmDeleteId)?.title ?? "this opportunity"}? This cannot be undone.`}>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirmDeleteId(null)} disabled={deleting}>Cancel</Button>
@@ -224,6 +309,15 @@ export default function OpportunitiesPage() {
         </div>
       </Dialog>
     </div>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
   );
 }
 

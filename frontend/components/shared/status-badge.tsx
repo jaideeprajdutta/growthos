@@ -15,6 +15,12 @@ const COLORS: Record<string, "default" | "blue" | "green" | "amber" | "red"> = {
   scheduled: "amber",
   executed: "green",
   failed: "red",
+  discovered: "amber",
+  reviewing: "blue",
+  experimenting: "amber",
+  implemented: "green",
+  archived: "default",
+  deferred: "amber",
 };
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {

@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumbs } from "@/components/layout/page-header";
-import type { GrowthObjective } from "@/types";
+import type { DiagnosticFinding, DiagnosticRun, GrowthObjective, IntelligenceReport } from "@/types";
 
 const PHASES: { key: string; title: string; description: string; objectives: string[] }[] = [
   { key: "acquisition", title: "Acquisition", description: "Attracting and qualifying new prospects.", objectives: ["customer_acquisition", "lead_generation"] },
@@ -93,8 +93,73 @@ export default function DiagnosisPage() {
               </Card>
             ))}
           </div>
+          <DiagnosticsSection companyId={companyId} />
+          <IntelligenceReportSection companyId={companyId} />
         </div>
       )}
     </>
+  );
+}
+
+function DiagnosticsSection({ companyId }: { companyId: string }) {
+  const runs = useApi<DiagnosticRun[]>(() => growthosApi.listDiagnosticRuns(companyId), "diagnosis-diagnostic-runs");
+  const findings = useApi<DiagnosticFinding[]>(() => growthosApi.listDiagnosticFindings(companyId), "diagnosis-diagnostic-findings");
+  if (runs.loading || findings.loading) return <Skeleton className="h-24 w-full" />;
+  const list = findings.data ?? [];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Diagnostic findings</CardTitle>
+        <CardDescription>Issues, bottlenecks and recommendations from the diagnostic engine — severity and confidence are recorded.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {runs.data && runs.data.length > 0 && <p className="text-xs text-fg-muted">Latest run: {runs.data[0].runAt.slice(0, 19).replace("T", " ")}</p>}
+        {list.length === 0 ? (
+          <EmptyState title="No diagnostic findings" description="Run the diagnostic engine from the Growth Diagnosis page header on the backend, or record evidence on the Opportunities page." />
+        ) : (
+          list.map((finding) => (
+            <div key={finding.id} className="rounded-lg border border-border p-3 space-y-1">
+              <p className="text-sm font-medium text-fg">{finding.problemStatement || finding.description || finding.dimension}</p>
+              <div className="flex flex-wrap gap-2 text-xs text-fg-muted">
+                <span className="rounded-full bg-muted px-2 py-0.5">{finding.category}</span>
+                <span className="rounded-full bg-muted px-2 py-0.5">severity {finding.severity ?? "—"}</span>
+                <span className="rounded-full bg-muted px-2 py-0.5">confidence {finding.confidence != null ? Math.round(finding.confidence * 100) : 0}%</span>
+                {finding.evidenceIds.length > 0 && <span>evidence: {finding.evidenceIds.length}</span>}
+              </div>
+              {finding.rootCauseHypothesis && <p className="text-xs text-fg-muted">{finding.rootCauseHypothesis}</p>}
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function IntelligenceReportSection({ companyId }: { companyId: string }) {
+  const reports = useApi<IntelligenceReport[]>(() => growthosApi.listIntelligenceReports(companyId), "diagnosis-intelligence-reports");
+  if (reports.loading) return null;
+  const report = reports.data?.[0];
+  return (
+    <Card>
+      <CardHeader><CardTitle>Business intelligence report</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        {!report ? (
+          <EmptyState title="No intelligence report yet" description="Generate a report on the Business Intelligence page." />
+        ) : (
+          <>
+            {report.executiveSummary && <p className="text-sm text-fg">{report.executiveSummary}</p>}
+            <div className="space-y-2">
+              {report.findings.slice(0, 5).map((finding) => (
+                <div key={finding.id} className="rounded-lg border border-border p-3">
+                  <p className="text-sm font-medium text-fg">[{finding.category}] {finding.title}</p>
+                  {finding.description && <p className="text-sm text-fg-muted">{finding.description}</p>}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-fg-muted">Version {report.version} · {report.findingsCount} findings</p>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

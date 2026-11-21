@@ -70,7 +70,7 @@ export const growthObjectiveSchema = z
 
 export const growthObjectivesSchema = z.array(growthObjectiveSchema).min(1, "Add at least one growth objective.");
 
-export const OPPORTUNITY_STATUSES = ["proposed", "prioritized", "selected", "in_progress", "completed", "rejected"] as const;
+export const OPPORTUNITY_STATUSES = ["proposed", "prioritized", "selected", "in_progress", "completed", "rejected", "discovered", "reviewing", "approved", "experimenting", "implemented", "archived", "deferred"] as const;
 export const EXPERIMENT_STATUSES = ["proposed", "approved", "running", "completed", "paused", "cancelled"] as const;
 export const EXECUTION_ACTION_STATUSES = ["pending", "approved", "scheduled", "in_progress", "executed", "failed", "paused", "cancelled"] as const;
 export const INTEGRATION_PROVIDERS = ["google_analytics", "google_search_console", "hubspot", "shopify", "stripe", "meta_ads", "google_ads", "crm", "other"] as const;

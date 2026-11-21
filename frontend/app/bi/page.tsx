@@ -5,12 +5,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { companyProfileFormSchema, BUSINESS_MODELS, COMPANY_STAGES, REVENUE_MODELS } from "@/lib/validation";
-import type { Company, CompanyProfile } from "@/types";
+import type { Company, CompanyProfile, IntelligenceProfile } from "@/types";
 import Link from "next/link";
 import { useActiveCompany } from "@/hooks/use-active-company";
 import { useApi } from "@/hooks/use-api";
 import { growthosApi } from "@/lib/api";
 import { Breadcrumbs, PageHeader } from "@/components/layout/page-header";
+import { ResearchPanel } from "@/components/shared/research-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -196,6 +197,66 @@ export default function BusinessIntelligencePage() {
           </div>
         </form>
       )}
+      {company && <ResearchPanel company={company} />}
+      {company && <IntelligenceOverview companyId={company.id} />}
     </>
+  );
+}
+
+function IntelligenceOverview({ companyId }: { companyId: string }) {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const profile = useApi<IntelligenceProfile | null>(() => growthosApi.getIntelligenceProfile(companyId), `bi-intelligence-${refreshKey}`);
+  const [generating, setGenerating] = useState(false);
+  const toast = useToast();
+
+  async function generateReport() {
+    setGenerating(true);
+    try {
+      const report = await growthosApi.generateIntelligenceReport(companyId, true);
+      toast.success(`Report v${report.version} generated with ${report.findingsCount} findings.`);
+      setRefreshKey((key) => key + 1);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate the report.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  return (
+    <Card className="space-y-3 p-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-fg">Business intelligence profile</h3>
+        <Button variant="secondary" size="sm" disabled={generating} onClick={() => void generateReport()}>
+          {generating ? "Generating…" : profile.data ? "Regenerate report" : "Generate report"}
+        </Button>
+      </div>
+      {profile.loading ? (
+        <Skeleton className="h-4 w-48" />
+      ) : profile.error ? (
+        <p className="text-sm text-destructive">{profile.error}</p>
+      ) : !profile.data ? (
+        <p className="text-sm text-fg-muted">
+          No intelligence profile yet. Generate a report to create one from research evidence.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {[
+            ["Value proposition", profile.data.valueProposition],
+            ["Target audience", profile.data.targetAudience],
+            ["Customer pain points", profile.data.customerPainPoints],
+            ["Pricing model", profile.data.pricingModel],
+            ["Key differentiators", profile.data.keyDifferentiators],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-fg-muted">{label}</h4>
+              <p className="mt-0.5 max-h-24 overflow-y-auto text-sm text-fg">{value || "Not available."}</p>
+            </div>
+          ))}
+          <p className="text-xs text-fg-muted">
+            Version {profile.data.version} — {profile.data.refreshedAt ? new Date(profile.data.refreshedAt).toLocaleString() : "not yet"}
+          </p>
+        </div>
+      )}
+    </Card>
   );
 }

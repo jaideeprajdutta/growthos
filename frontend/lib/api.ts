@@ -1,11 +1,15 @@
 import type {
   ActivityLogEntry,
+  AIStatus,
   Company,
   CompanyCreate,
   CompanyProfile,
   CompanyProfileCreate,
   CompanyStats,
   CompanyUpdate,
+  DiagnosticFinding,
+  DiagnosticRun,
+  Evidence,
   ExecutionAction,
   ExecutionActionCreate,
   ExecutionActionUpdate,
@@ -17,12 +21,18 @@ import type {
   Integration,
   IntegrationCreate,
   IntegrationUpdate,
+  IntelligenceProfile,
+  IntelligenceReport,
+  LinkEvidenceOut,
   Opportunity,
   OpportunityCreate,
+  OpportunityDetail,
   OpportunityUpdate,
+  ResearchPage,
+  ResearchRun,
 } from "@/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8300";
 
 export class ApiError extends Error {
   status?: number;
@@ -119,4 +129,42 @@ export const growthosApi = {
     request(`/companies/${encodeURIComponent(companyId)}/integrations/${encodeURIComponent(integrationId)}`, { method: "PUT", body: JSON.stringify(integration) }),
   deleteIntegration: (companyId: string, integrationId: string): Promise<void> =>
     request(`/companies/${encodeURIComponent(companyId)}/integrations/${encodeURIComponent(integrationId)}`, { method: "DELETE" }),
+
+  getAIStatus: (): Promise<AIStatus> => request("/ai/status"),
+
+  startResearch: (companyId: string, sourceUrl: string): Promise<ResearchRun> =>
+    request(`/companies/${encodeURIComponent(companyId)}/research`, { method: "POST", body: JSON.stringify({ source_url: sourceUrl }) }),
+  listResearchRuns: (companyId: string): Promise<ResearchRun[]> =>
+    request(`/companies/${encodeURIComponent(companyId)}/research/runs`),
+  listResearchPages: (companyId: string, runId: string): Promise<ResearchPage[]> =>
+    request(`/companies/${encodeURIComponent(companyId)}/research/runs/${encodeURIComponent(runId)}/pages`),
+  retryResearchPage: (companyId: string, pageId: string): Promise<ResearchPage> =>
+    request(`/companies/${encodeURIComponent(companyId)}/research/pages/${encodeURIComponent(pageId)}/retry`, { method: "POST" }),
+
+  listEvidence: (companyId: string): Promise<Evidence[]> => request(`/companies/${encodeURIComponent(companyId)}/evidence`),
+  getEvidence: (companyId: string, evidenceId: string): Promise<Evidence> =>
+    request(`/companies/${encodeURIComponent(companyId)}/evidence/${encodeURIComponent(evidenceId)}`),
+
+  getIntelligenceProfile: (companyId: string): Promise<IntelligenceProfile | null> =>
+    request(`/companies/${encodeURIComponent(companyId)}/intelligence`),
+  generateIntelligenceReport: (companyId: string, forceRefresh = false): Promise<IntelligenceReport> =>
+    request(`/companies/${encodeURIComponent(companyId)}/intelligence/generate?force_refresh=${forceRefresh}`, { method: "POST" }),
+  listIntelligenceReports: (companyId: string): Promise<IntelligenceReport[]> =>
+    request(`/companies/${encodeURIComponent(companyId)}/reports`),
+
+  listDiagnosticRuns: (companyId: string): Promise<DiagnosticRun[]> =>
+    request(`/companies/${encodeURIComponent(companyId)}/diagnostic-runs`),
+  listDiagnosticFindings: (companyId: string): Promise<DiagnosticFinding[]> =>
+    request(`/companies/${encodeURIComponent(companyId)}/diagnostic-findings`),
+  generateDiagnostics: (companyId: string): Promise<DiagnosticRun> =>
+    request(`/companies/${encodeURIComponent(companyId)}/diagnostics/generate`, { method: "POST" }),
+
+  getOpportunityDetail: (companyId: string, opportunityId: string): Promise<OpportunityDetail> =>
+    request(`/companies/${encodeURIComponent(companyId)}/opportunities/${encodeURIComponent(opportunityId)}`),
+  updateOpportunityStatus: (companyId: string, opportunityId: string, status: Opportunity["status"]): Promise<Opportunity> =>
+    request(`/companies/${encodeURIComponent(companyId)}/opportunities/${encodeURIComponent(opportunityId)}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
+  createExperimentForOpportunity: (companyId: string, opportunityId: string): Promise<Experiment> =>
+    request(`/companies/${encodeURIComponent(companyId)}/opportunities/${encodeURIComponent(opportunityId)}/experiments`, { method: "POST" }),
+  linkEvidenceToOpportunity: (companyId: string, opportunityId: string, evidenceIds: string[]): Promise<LinkEvidenceOut> =>
+    request(`/companies/${encodeURIComponent(companyId)}/opportunities/${encodeURIComponent(opportunityId)}/evidence`, { method: "POST", body: JSON.stringify({ evidenceIds }) }),
 };
