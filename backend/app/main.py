@@ -8,11 +8,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.ai.client import AIError
 from app.api.v1 import router as api_router
 from app.core.config import settings
 from app.core.exceptions import DuplicateError, NotFoundError
 from app.db.session import engine
 from app.models.base import Base
+from app.research.jobs import recover_interrupted_runs
 
 logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 logger = logging.getLogger("growthos")
@@ -22,6 +24,7 @@ logger = logging.getLogger("growthos")
 async def lifespan(app: FastAPI):
     """Ensure tables exist on start (Alembic migrations are the source of truth in production)."""
     Base.metadata.create_all(engine)
+    recover_interrupted_runs()
     logger.info("GrowthOS backend started on /api/v1")
     yield
     logger.info("GrowthOS backend stopped")
@@ -52,6 +55,12 @@ def create_app() -> FastAPI:
     async def validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         errors = [{"field": list(error["loc"])[-1:], "message": error["msg"]} for error in exc.errors()]
         return JSONResponse(status_code=422, content={"detail": errors})
+
+    @app.exception_handler(AIError)
+    async def ai_error_handler(request: Request, exc: AIError) -> JSONResponse:
+        """Surface AI configuration/provider failures instead of a generic 500."""
+        logger.warning("AI request failed: %s", exc)
+        return JSONResponse(status_code=503, content={"detail": str(exc)})
 
     @app.exception_handler(Exception)
     async def unhandled_handler(request: Request, exc: Exception) -> JSONResponse:

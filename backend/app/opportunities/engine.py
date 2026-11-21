@@ -1,6 +1,7 @@
 """Opportunity generation engine — creates specific, evidence-backed opportunities."""
 
 import logging
+import re
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -11,6 +12,11 @@ from app.models import Company, CompanyIntelligenceProfile, DiagnosticFinding, E
 from app.opportunities import scoring
 
 logger = logging.getLogger("growthos.opportunities")
+
+
+def _normalize_title(title: str) -> str:
+    """Normalize titles for duplicate detection (case, punctuation, spacing)."""
+    return re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
 
 
 class OpportunityGenPayload(BaseModel):
@@ -72,12 +78,17 @@ def generate_opportunities(db: Session, company_id: str) -> list[Opportunity]:
     company = db.get(Company, company_id)
     findings = db.execute(select(IntelligenceFinding).where(IntelligenceFinding.company_id == company_id)).scalars().all()
     diagnostic_findings = db.execute(select(DiagnosticFinding).where(DiagnosticFinding.company_id == company_id)).scalars().all()
-    evidence_rows = db.execute(select(Evidence).where(Evidence.company_id == company_id).limit(50)).scalars().all()
+    evidence_rows = db.execute(
+        select(Evidence)
+        .where(Evidence.company_id == company_id)
+        .order_by(Evidence.collected_at, Evidence.id)
+        .limit(50)
+    ).scalars().all()
     profile = db.execute(
         select(CompanyIntelligenceProfile).where(CompanyIntelligenceProfile.company_id == company_id)
     ).scalars().first()
     existing = db.execute(select(Opportunity).where(Opportunity.company_id == company_id)).scalars().all()
-    existing_titles = {opportunity.title.lower() for opportunity in existing}
+    existing_titles = {_normalize_title(opportunity.title) for opportunity in existing}
 
     prompt = build_opportunities_prompt(company, findings, diagnostic_findings, evidence_rows, profile)
     result = generate_structured(
@@ -96,17 +107,19 @@ def generate_opportunities(db: Session, company_id: str) -> list[Opportunity]:
     created: list[Opportunity] = []
     for gen in payload.opportunities:
         title = gen.title.strip()
-        if title.lower() in existing_titles:
+        normalized_title = _normalize_title(title)
+        if normalized_title in existing_titles:
             logger.info("Skipping duplicate opportunity: %s", title)
             continue
         diagnostic_finding_id = (
             gen.related_diagnostic_finding_id if gen.related_diagnostic_finding_id in diagnostic_by_id else None
         )
         evidence_ids = [evidence_id for evidence_id in gen.evidence_ids if evidence_id in valid_ids]
+        selected_ids = set(evidence_ids)
         evidence_summary = "\n".join(
             f"- {evidence.source_url}: {evidence.extracted_statement or ''}"
             for evidence in evidence_rows
-            if evidence.id in set(evidence_ids)
+            if evidence.id in selected_ids
         )
         opportunity = Opportunity(
             company_id=company_id,
@@ -116,7 +129,6 @@ def generate_opportunities(db: Session, company_id: str) -> list[Opportunity]:
             confidence=int(round(max(0, min(1, gen.confidence)) * 100)),
             effort=gen.effort,
             risk=gen.risk,
-            priority_score=gen.priority_score,
             status="discovered",
             supporting_evidence=evidence_summary or "",
             recommended_next_action=(gen.intervention or gen.suggested_measurement or "").strip() or "",
@@ -126,10 +138,11 @@ def generate_opportunities(db: Session, company_id: str) -> list[Opportunity]:
         db.flush()
         for evidence_id in evidence_ids:
             db.add(OpportunityEvidence(opportunity_id=opportunity.id, evidence_id=evidence_id))
-        if opportunity.priority_score is None:
-            opportunity.priority_score = scoring.score_opportunity(opportunity)
+        # Always use the deterministic scoring function so priorities stay
+        # explainable; AI-supplied scores are ignored.
+        opportunity.priority_score = scoring.score_opportunity(opportunity)
         db.commit()
         db.refresh(opportunity)
-        existing_titles.add(title.lower())
+        existing_titles.add(normalized_title)
         created.append(opportunity)
     return created

@@ -92,10 +92,22 @@ def generate_intelligence_report(db: Session, company_id: str, force_refresh: bo
         return latest
 
     company = db.get(Company, company_id)
-    evidence_rows = db.execute(select(Evidence).where(Evidence.company_id == company_id).limit(50)).scalars().all()
-    run = db.get(ResearchRun, latest.run_id) if latest is not None and latest.run_id else None
+    profile = db.execute(
+        select(CompanyIntelligenceProfile).where(CompanyIntelligenceProfile.company_id == company_id)
+    ).scalar_one_or_none()
+    evidence_rows = db.execute(
+        select(Evidence)
+        .where(Evidence.company_id == company_id)
+        .order_by(Evidence.collected_at, Evidence.id)
+        .limit(50)
+    ).scalars().all()
+    run = db.execute(
+        select(ResearchRun)
+        .where(ResearchRun.company_id == company_id)
+        .order_by(ResearchRun.created_at.desc(), ResearchRun.id.desc())
+    ).scalars().first()
 
-    prompt = build_intelligence_prompt(company, None, evidence_rows, run)
+    prompt = build_intelligence_prompt(company, profile, evidence_rows, run)
     result = generate_structured(
         IntelligenceReportPayload,
         prompt,
@@ -114,9 +126,6 @@ def generate_intelligence_report(db: Session, company_id: str, force_refresh: bo
     for finding in payload.findings:
         finding.evidence_ids = [evidence_id for evidence_id in finding.evidence_ids if evidence_id in valid_ids]
 
-    profile = db.execute(
-        select(CompanyIntelligenceProfile).where(CompanyIntelligenceProfile.company_id == company_id)
-    ).scalar_one_or_none()
     if profile is None:
         profile = CompanyIntelligenceProfile(
             company_id=company_id,
@@ -131,6 +140,12 @@ def generate_intelligence_report(db: Session, company_id: str, force_refresh: bo
         profile.version += 1
         profile.source = f"ai:{usage.model}"
         profile.refreshed_at = utc_now()
+    profile.provenance = {
+        "research_run_id": run.id if run else None,
+        "evidence_count": len(evidence_rows),
+        "model": usage.model,
+        "generated_at": utc_now().isoformat(),
+    }
     _update_profile_fields(profile, payload.profile_update)
     db.commit()
     db.refresh(profile)
@@ -142,7 +157,12 @@ def generate_intelligence_report(db: Session, company_id: str, force_refresh: bo
         executive_summary=payload.executive_summary or None,
         sections=payload.sections,
         findings_count=len(payload.findings),
-        ai_usage_json={"input_tokens": usage.input_tokens, "output_tokens": usage.output_tokens, "model": usage.model},
+        ai_usage_json={
+            "input_tokens": usage.input_tokens,
+            "output_tokens": usage.output_tokens,
+            "model": usage.model,
+            "invalid_evidence_references": invalid,
+        },
         model=usage.model or None,
     )
     db.add(report)

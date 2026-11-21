@@ -1,11 +1,27 @@
 """Company request and response schemas."""
 
 from datetime import datetime
+from urllib.parse import urlsplit
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.companies import Company
 from app.schemas.common import CompanyBusinessModel, CompanyStage, RevenueModel
+
+
+def _validate_website(value: str | None) -> str | None:
+    """Allow empty websites, otherwise require a well-formed http(s) URL."""
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return ""
+    parsed = urlsplit(cleaned)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError("Website must be a valid http:// or https:// URL.")
+    if parsed.username or parsed.password:
+        raise ValueError("Website must not contain embedded credentials.")
+    return cleaned
 
 
 class CompanyCreate(BaseModel):
@@ -21,6 +37,11 @@ class CompanyCreate(BaseModel):
     mainProductOrService: str | None = Field(default=None, max_length=2000)
     primaryMarket: str | None = Field(default=None, max_length=2000)
 
+    @field_validator("website")
+    @classmethod
+    def website_is_valid(cls, value: str | None) -> str | None:
+        return _validate_website(value)
+
 
 class CompanyUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
@@ -34,6 +55,11 @@ class CompanyUpdate(BaseModel):
     targetAudience: str | None = Field(default=None, max_length=2000)
     mainProductOrService: str | None = Field(default=None, max_length=2000)
     primaryMarket: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("website")
+    @classmethod
+    def website_is_valid(cls, value: str | None) -> str | None:
+        return _validate_website(value)
 
 
 class CompanyOut(BaseModel):

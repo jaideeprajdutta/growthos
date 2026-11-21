@@ -22,6 +22,30 @@ class AIError(Exception):
     """Raised when AI generation fails."""
 
 
+def openai_strict_schema(schema: type[BaseModel]) -> dict[str, Any]:
+    """Return a JSON schema OpenAI's strict structured-output mode accepts.
+
+    Strict mode requires every object to set ``additionalProperties: false``
+    and to list every property as required, including properties that have
+    Pydantic defaults. The defaults still apply when the response is parsed.
+    """
+
+    def strictify(node: Any) -> None:
+        if isinstance(node, dict):
+            if node.get("type") == "object" and isinstance(node.get("properties"), dict):
+                node["additionalProperties"] = False
+                node["required"] = list(node["properties"].keys())
+            for value in node.values():
+                strictify(value)
+        elif isinstance(node, list):
+            for item in node:
+                strictify(item)
+
+    schema_dict = schema.model_json_schema()
+    strictify(schema_dict)
+    return schema_dict
+
+
 @dataclass
 class Usage:
     """Token usage reported by the provider."""
@@ -81,7 +105,7 @@ class OpenAIClient:
             ],
             "response_format": {
                 "type": "json_schema",
-                "json_schema": {"name": schema.__name__, "schema": schema.model_json_schema(), "strict": True},
+                "json_schema": {"name": schema.__name__, "schema": openai_strict_schema(schema), "strict": True},
             },
         }
         response = self._httpx.post(

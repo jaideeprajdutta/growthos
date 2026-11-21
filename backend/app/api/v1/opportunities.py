@@ -11,7 +11,7 @@ from app.core.exceptions import NotFoundError
 from app.db.session import get_db
 from app.models import Experiment, Evidence, Opportunity, OpportunityEvidence
 from app.models.workspaces import Workspace
-from app.opportunities import scoring
+from app.opportunities import generate_opportunities, scoring
 from app.repositories import activity_log_repository, company_repository, experiment_repository, opportunity_repository
 from app.schemas.experiments import ExperimentOut, experiment_out
 from app.schemas.opportunities import (
@@ -73,6 +73,21 @@ def delete_opportunity(
 ) -> None:
     company_repository.require_company(db, company_id, workspace.id)
     opportunity_repository.delete_opportunity(db, opportunity_id, company_id)
+
+
+@router.post("/companies/{company_id}/opportunities/generate", response_model=list[OpportunityOut], status_code=201)
+def generate_opportunities_route(
+    company_id: str,
+    db: Session = Depends(get_db),
+    workspace: Workspace = Depends(get_workspace),
+) -> list[OpportunityOut]:
+    """Generate evidence-backed opportunities from intelligence and diagnostics.
+
+    Requires a configured AI provider; the AI error handler returns 503 with a
+    clear configuration message when none is available.
+    """
+    company_repository.require_company(db, company_id, workspace.id)
+    return [opportunity_out(opportunity) for opportunity in generate_opportunities(db, company_id)]
 
 
 @router.get("/companies/{company_id}/opportunities/{opportunity_id}", response_model=OpportunityDetailOut)

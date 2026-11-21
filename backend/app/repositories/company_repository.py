@@ -13,13 +13,22 @@ from app.core.exceptions import DuplicateError, NotFoundError
 from app.models import (
     ActivityLogEntry,
     Company,
+    CompanyIntelligenceProfile,
     CompanyProfile,
+    DiagnosticFinding,
+    DiagnosticRun,
+    Evidence,
     Experiment,
     ExperimentResult,
     ExecutionAction,
     GrowthObjective,
     Integration,
+    IntelligenceFinding,
+    IntelligenceReport,
     Opportunity,
+    OpportunityEvidence,
+    ResearchPage,
+    ResearchRun,
 )
 from app.schemas.companies import CompanyCreate, CompanyUpdate
 
@@ -104,13 +113,27 @@ def update_company(db: Session, company_id: str, workspace_id: str, data: Compan
 
 
 def delete_company(db: Session, company_id: str, workspace_id: str) -> None:
-    """Delete a company and every dependent record, in a single transaction."""
+    """Delete a company and every dependent record, in a single transaction.
+
+    Deletion order follows the foreign-key graph: join rows first, then rows
+    that reference diagnostic findings or research runs, then the parent rows.
+    """
     company = require_company(db, company_id, workspace_id)
+    opportunity_ids = select(Opportunity.id).where(Opportunity.company_id == company_id)
+    db.execute(delete(OpportunityEvidence).where(OpportunityEvidence.opportunity_id.in_(opportunity_ids)))
+    db.execute(delete(ExperimentResult).where(ExperimentResult.company_id == company_id))
+    db.execute(delete(Experiment).where(Experiment.company_id == company_id))
+    db.execute(delete(Opportunity).where(Opportunity.company_id == company_id))
+    db.execute(delete(DiagnosticFinding).where(DiagnosticFinding.company_id == company_id))
+    db.execute(delete(DiagnosticRun).where(DiagnosticRun.company_id == company_id))
+    db.execute(delete(IntelligenceFinding).where(IntelligenceFinding.company_id == company_id))
+    db.execute(delete(IntelligenceReport).where(IntelligenceReport.company_id == company_id))
+    db.execute(delete(CompanyIntelligenceProfile).where(CompanyIntelligenceProfile.company_id == company_id))
+    db.execute(delete(Evidence).where(Evidence.company_id == company_id))
+    db.execute(delete(ResearchPage).where(ResearchPage.run_id.in_(select(ResearchRun.id).where(ResearchRun.company_id == company_id))))
+    db.execute(delete(ResearchRun).where(ResearchRun.company_id == company_id))
     db.execute(delete(CompanyProfile).where(CompanyProfile.company_id == company_id))
     db.execute(delete(GrowthObjective).where(GrowthObjective.company_id == company_id))
-    db.execute(delete(Opportunity).where(Opportunity.company_id == company_id))
-    db.execute(delete(Experiment).where(Experiment.company_id == company_id))
-    db.execute(delete(ExperimentResult).where(ExperimentResult.company_id == company_id))
     db.execute(delete(ExecutionAction).where(ExecutionAction.company_id == company_id))
     db.execute(delete(Integration).where(Integration.company_id == company_id))
     db.execute(delete(ActivityLogEntry).where(ActivityLogEntry.company_id == company_id))
