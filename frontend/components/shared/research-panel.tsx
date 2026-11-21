@@ -24,20 +24,39 @@ export function ResearchPanel({ company }: { company: Company }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [pollTimedOut, setPollTimedOut] = useState(false);
-  const [lastRun, setLastRun] = useState<ResearchRun | null>(null);
+  const [runsData, setRunsData] = useState<ResearchRun[] | null>(null);
+  const [runsLoading, setRunsLoading] = useState(true);
+  const [runsError, setRunsError] = useState<string | null>(null);
 
-  const runs = useApi<ResearchRun[]>(() => api.listResearchRuns(company.id), `research-runs-${company.id}-${refreshKey}`);
-  const latestRun = (runId ? runs.data?.find((run) => run.id === runId) : null) ?? runs.data?.[0] ?? null;
-  // Keep the last known run while the runs list is temporarily unavailable.
-  const activeRun = latestRun ?? lastRun;
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setRunsLoading(true);
+      try {
+        const list = await api.listResearchRuns(company.id);
+        if (!cancelled) {
+          setRunsData(list);
+          setRunsError(null);
+        }
+      } catch (err) {
+        // Transient failure: keep showing the last known runs.
+        if (!cancelled) setRunsError(err instanceof Error ? err.message : "Failed to load research.");
+      } finally {
+        if (!cancelled) setRunsLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [company.id, refreshKey]);
+
+  const latestRun = runsData?.[0] ?? null;
+  const activeRun = runId ? (runsData?.find((run) => run.id === runId) ?? null) : latestRun;
   const pages = useApi<ResearchPage[]>(
     activeRun ? () => api.listResearchPages(company.id, activeRun.id) : null,
     `research-pages-${company.id}-${activeRun?.id}-${refreshKey}`
   );
-
-  useEffect(() => {
-    if (latestRun) setLastRun(latestRun);
-  }, [latestRun]);
 
   // The run we are actively polling: a non-terminal run after refresh.
   const pollingRunId = activeRun && !TERMINAL_STATUSES.has(activeRun.status) && !pollTimedOut ? activeRun.id : null;
@@ -109,7 +128,7 @@ export function ResearchPanel({ company }: { company: Company }) {
         <div className="flex items-center justify-between">
           <CardTitle>Website research</CardTitle>
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={handleRefresh} disabled={runs.loading}>
+            <Button variant="secondary" size="sm" onClick={handleRefresh} disabled={runsLoading}>
               <RefreshCw className="h-4 w-4" /> Refresh
             </Button>
             <Button size="sm" onClick={() => void startResearch()} disabled={starting}>
@@ -121,10 +140,10 @@ export function ResearchPanel({ company }: { company: Company }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {startError ? <p className="text-sm text-destructive">{startError}</p> : null}
-        {runs.loading ? (
+        {runsLoading ? (
           <Skeleton className="h-8 w-64" />
-        ) : runs.error && !activeRun ? (
-          <p className="text-sm text-destructive">{runs.error}</p>
+        ) : runsError && !activeRun ? (
+          <p className="text-sm text-destructive">{runsError}</p>
         ) : !activeRun ? (
           <EmptyState
             title="No research yet"
