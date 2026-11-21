@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { useActiveCompany } from "@/hooks/use-active-company";
 import { useApi } from "@/hooks/use-api";
 import { growthosApi } from "@/lib/api";
-import type { ActivityLogEntry, CompanyStats, ExecutionAction, Experiment, GrowthObjective, Opportunity } from "@/types";
+import type { ActivityLogEntry, ExecutionAction, Experiment, GrowthObjective, Opportunity } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -15,6 +15,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatTimestamp } from "@/lib/utils";
 
 const priorityValue = (opportunity: Opportunity) => opportunity.priorityScore ?? -1;
+
+function StatCard({ title, count, href }: { title: string; count: number; href: string }) {
+  return (
+    <Link href={href}>
+      <Card className="h-30 p-5">
+        <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">{title}</p>
+        <p className="mt-1 text-2xl font-semibold text-fg">{count}</p>
+        <p className="mt-2 flex items-center gap-2 text-xs text-fg-muted"><ArrowRight className="h-3 w-3" /> See details</p>
+      </Card>
+    </Link>
+  );
+}
 
 export default function OverviewPage() {
   const { company: activeCompany, loading: loadingCompany, error: companyError } = useActiveCompany();
@@ -40,16 +52,6 @@ export default function OverviewPage() {
   if (objectivesList.length === 0) recommendedSteps.push("Record your primary growth objective on the company profile page.");
   if (runningExperiments.length === 0) recommendedSteps.push("Start your first experiment from the Experiments page.");
   if (opportunitiesList.length === 0) recommendedSteps.push("Record your first growth opportunity on the Opportunities page.");
-
-  const StatCard = ({ title, count, href }: { title: string; count: number; href: string }) => (
-    <Link href={href}>
-      <Card className="h-30 p-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">{title}</p>
-        <p className="mt-1 text-2xl font-semibold text-fg">{count}</p>
-        <p className="mt-2 flex items-center gap-2 text-xs text-fg-muted"><ArrowRight className="h-3 w-3" /> See details</p>
-      </Card>
-    </Link>
-  );
 
   return (
     <div className="space-y-6">

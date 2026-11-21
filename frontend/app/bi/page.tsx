@@ -178,7 +178,7 @@ export default function BusinessIntelligencePage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Positioning</CardTitle><CardDescription>The business's position in its market.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Positioning</CardTitle><CardDescription>The business position in the market.</CardDescription></CardHeader>
             <CardContent className="space-y-2">
               <Input label="Positioning statement" {...form.register("positioningStatement")} />
             </CardContent>
