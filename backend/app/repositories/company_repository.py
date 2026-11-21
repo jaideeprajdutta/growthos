@@ -53,7 +53,7 @@ def create_company(db: Session, workspace_id: str, data: CompanyCreate) -> Compa
         name=data.name,
         workspace_id=workspace_id,
         website=data.website or "",
-        is_active=False,
+        is_active=bool(data.isActive),
         business_model=data.businessModel or "other",
         industry=data.industry or "",
         business_stage=data.businessStage or "startup",
@@ -80,6 +80,8 @@ def update_company(db: Session, company_id: str, workspace_id: str, data: Compan
         company.name = data.name
     if data.website is not None:
         company.website = data.website
+    if data.isActive is not None:
+        company.is_active = data.isActive
     if data.businessModel is not None:
         company.business_model = data.businessModel
     if data.industry is not None:

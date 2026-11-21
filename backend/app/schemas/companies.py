@@ -11,6 +11,7 @@ from app.schemas.common import CompanyBusinessModel, CompanyStage, RevenueModel
 class CompanyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     website: str | None = Field(default=None, max_length=512)
+    isActive: bool | None = None
     businessModel: CompanyBusinessModel | None = None
     industry: str | None = Field(default=None, max_length=200)
     businessStage: CompanyStage | None = None
@@ -24,6 +25,7 @@ class CompanyCreate(BaseModel):
 class CompanyUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     website: str | None = Field(default=None, max_length=512)
+    isActive: bool | None = None
     businessModel: CompanyBusinessModel | None = None
     industry: str | None = Field(default=None, max_length=200)
     businessStage: CompanyStage | None = None
