@@ -6,13 +6,43 @@ from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse, urlunsplit
 
 from app.research.extractor import extract_page_content
-from app.research.robots import robots_allows
+from app.research.robots import RobotsPolicy, fetch_robots_policy
 from app.research.sitemap import parse_sitemap
 from app.research.url_safety import fetch_text
 
 DEFAULT_MAX_PAGES = 30
 DEFAULT_MAX_DEPTH = 3
 MAX_TEXT_CHARS = 20_000
+
+# Paths that rarely carry useful company evidence (auth walls, carts).
+LOW_VALUE_PATHS = (
+    "/login",
+    "/signin",
+    "/sign-in",
+    "/signup",
+    "/sign-up",
+    "/register",
+    "/logout",
+    "/cart",
+    "/checkout",
+    "/account",
+    "/password",
+)
+LOW_VALUE_EXTENSIONS = (
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".svg",
+    ".webp",
+    ".zip",
+    ".gz",
+    ".mp4",
+    ".mp3",
+    ".css",
+    ".js",
+)
 
 
 @dataclass
@@ -24,6 +54,7 @@ class CrawledPage:
     text: str | None
     word_count: int
     duration_ms: int | None
+    summary: str | None = None
 
 
 def normalize_url(url: str) -> str:
@@ -35,6 +66,14 @@ def _same_host(url_a: str, url_b: str) -> bool:
     return urlparse(url_a).netloc.lower() == urlparse(url_b).netloc.lower()
 
 
+def _is_crawlable(url: str) -> bool:
+    """Skip auth/cart paths and non-HTML assets discovered in links or sitemaps."""
+    path = urlparse(url).path.lower().rstrip("/") or "/"
+    if path.endswith(LOW_VALUE_EXTENSIONS):
+        return False
+    return not any(path == prefix or path.startswith(prefix + "/") for prefix in LOW_VALUE_PATHS)
+
+
 def crawl_site(
     source_url: str,
     max_pages: int = DEFAULT_MAX_PAGES,
@@ -43,8 +82,8 @@ def crawl_site(
 ) -> list[CrawledPage]:
     """Crawl the site rooted at ``source_url``.
 
-    Respects robots.txt, dedupes URLs, limits depth/pages/time, and records
-    per-page outcomes so individual failures don't abort the run.
+    Fetches robots.txt once, respects it, dedupes URLs, limits depth/pages/time,
+    and records per-page outcomes so individual failures don't abort the run.
     """
     pages: list[CrawledPage] = []
     visited: set[str] = set()
@@ -53,12 +92,14 @@ def crawl_site(
     queue.append((start, 0))
 
     base = urlunsplit((urlparse(start).scheme, urlparse(start).netloc, "", "", ""))
+    policy: RobotsPolicy = fetch_robots_policy(start)
+
     for sitemap_path in ("/sitemap.xml", "/sitemap_index.xml"):
         try:
             sitemap_text, _ = fetch_text(base + sitemap_path, timeout=15.0)
             for loc in parse_sitemap(sitemap_text, base):
                 normalized_loc = normalize_url(loc)
-                if normalized_loc not in visited:
+                if normalized_loc not in visited and _is_crawlable(normalized_loc):
                     queue.append((normalized_loc, 1))
             break
         except Exception:
@@ -76,11 +117,12 @@ def crawl_site(
         status_detail: str | None = None
         title: str | None = None
         text: str | None = None
+        summary: str | None = None
         word_count = 0
         duration_ms: int | None = None
         internal_links: list[str] = []
 
-        if not robots_allows(normalized):
+        if not policy.allows(normalized):
             status_detail = "Disallowed by robots.txt."
         else:
             started = time.perf_counter()
@@ -91,6 +133,7 @@ def crawl_site(
                 status = "scanned"
                 title = extracted.title or None
                 text = extracted.text[:MAX_TEXT_CHARS] or None
+                summary = extracted.summary or None
                 word_count = len(extracted.text.split())
                 if depth < max_depth:
                     queued = {item[0] for item in queue}
@@ -99,13 +142,26 @@ def crawl_site(
                         if not _same_host(normalized, absolute):
                             continue
                         normalized_link = normalize_url(absolute)
+                        if not _is_crawlable(normalized_link):
+                            continue
                         if normalized_link not in visited and normalized_link not in queued:
                             internal_links.append(normalized_link)
             except Exception as exc:
                 duration_ms = int((time.perf_counter() - started) * 1000)
                 status_detail = str(exc)[:500] or "Fetch failed."
 
-        pages.append(CrawledPage(url=normalized, status=status, status_detail=status_detail, title=title, text=text, word_count=word_count, duration_ms=duration_ms))
+        pages.append(
+            CrawledPage(
+                url=normalized,
+                status=status,
+                status_detail=status_detail,
+                title=title,
+                text=text,
+                summary=summary,
+                word_count=word_count,
+                duration_ms=duration_ms,
+            )
+        )
         for link in internal_links:
             if len(queue) < max_pages * 2:
                 queue.append((link, depth + 1))
