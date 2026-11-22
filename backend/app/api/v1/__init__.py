@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.v1.ai import router as ai_router
 from app.api.v1.activity_log import router as activity_log_router
+from app.api.v1.auth import router as auth_router
 from app.api.v1.companies import router as companies_router
 from app.api.v1.company_profiles import router as company_profiles_router
 from app.api.v1.diagnostics import router as diagnostics_router
@@ -22,6 +23,7 @@ from app.api.v1.research import router as research_router
 
 router = APIRouter()
 router.include_router(health_router)
+router.include_router(auth_router)
 router.include_router(ai_router)
 router.include_router(companies_router)
 router.include_router(company_profiles_router)

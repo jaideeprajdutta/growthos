@@ -11,3 +11,7 @@ class DuplicateError(Exception):
 
 class DomainValidationError(Exception):
     """Raised when a request is structurally valid but breaks a workflow rule."""
+
+
+class AuthenticationError(Exception):
+    """Raised when credentials or a session are invalid."""

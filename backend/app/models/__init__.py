@@ -20,10 +20,11 @@ from app.models.opportunities import Opportunity
 from app.models.opportunity_evidence import OpportunityEvidence
 from app.models.research_pages import ResearchPage
 from app.models.research_runs import ResearchRun
-from app.models.workspaces import User, Workspace
+from app.models.workspaces import AuthSession, User, Workspace
 
 __all__ = [
     "ActivityLogEntry",
+    "AuthSession",
     "Base",
     "Company",
     "CompanyIntelligenceProfile",

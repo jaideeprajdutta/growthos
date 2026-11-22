@@ -21,7 +21,8 @@ def get_company_profile(
     workspace: Workspace = Depends(get_workspace),
 ) -> Optional[CompanyProfileOut]:
     company_repository.require_company(db, company_id, workspace.id)
-    return company_profile_out(company_profile_repository.get_profile(db, company_id, workspace.id))
+    profile = company_profile_repository.get_profile(db, company_id, workspace.id)
+    return company_profile_out(profile) if profile is not None else None
 
 
 @router.post("/companies/{company_id}/profile", response_model=CompanyProfileOut, status_code=201)
