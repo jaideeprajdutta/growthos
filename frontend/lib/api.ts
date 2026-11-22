@@ -1,6 +1,8 @@
 import type {
   ActivityLogEntry,
   AIStatus,
+  AuthResponse,
+  AuthUser,
   Company,
   CompanyCreate,
   CompanyProfile,
@@ -36,16 +38,20 @@ import type {
   IntelligenceProfile,
   IntelligenceReport,
   LinkEvidenceOut,
+  LoginInput,
   MeasurementImport,
   Opportunity,
   OpportunityCreate,
   OpportunityDetail,
   OpportunityUpdate,
+  RegisterInput,
   ResearchPage,
   ResearchRun,
   TaskNoteCreate,
   TaskStatusUpdate,
 } from "@/types";
+
+import { clearToken, getToken, UNAUTHORIZED_EVENT } from "@/lib/auth-token";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8300";
 
@@ -60,18 +66,27 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken();
   const response = await fetch(`${API_BASE}/api/v1${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers ?? {}),
+    },
   });
 
   if (!response.ok) {
     let detail: string | undefined;
     try {
       const body = await response.json();
-      detail = typeof body?.detail === "string" ? body.detail : undefined;
+      detail = typeof body?.detail === "string" ? body.detail : Array.isArray(body?.detail) ? "Validation failed." : undefined;
     } catch {
       /* body is not JSON */
+    }
+    if (response.status === 401 && !path.startsWith("/auth/") && typeof window !== "undefined") {
+      clearToken();
+      window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
     }
     throw new ApiError(`${response.status}${detail ? `: ${detail}` : ""}`, { status: response.status });
   }
@@ -82,6 +97,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const growthosApi = {
   health: (): Promise<{ status: string }> => request("/health"),
+  register: (input: RegisterInput): Promise<AuthResponse> =>
+    request("/auth/register", { method: "POST", body: JSON.stringify(input) }),
+  login: (input: LoginInput): Promise<AuthResponse> =>
+    request("/auth/login", { method: "POST", body: JSON.stringify(input) }),
+  me: (): Promise<AuthUser> => request("/auth/me"),
+  logout: (): Promise<void> => request("/auth/logout", { method: "POST" }),
   listCompanies: (): Promise<Company[]> => request("/companies"),
   getCompany: (id: string): Promise<Company> => request(`/companies/${encodeURIComponent(id)}`),
   createCompany: (company: CompanyCreate): Promise<Company> => request("/companies", { method: "POST", body: JSON.stringify(company) }),

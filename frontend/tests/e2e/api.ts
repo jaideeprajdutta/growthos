@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, type APIRequestContext } from "@playwright/test";
 import type { Evidence, GrowthObjective, Opportunity, OpportunityStatus } from "@/types";
+import { authHeaders } from "./auth-state";
 
 const BACKEND = "http://localhost:8301/api/v1";
 const BACKEND_DIR = path.resolve(__dirname, "../../../backend");
@@ -22,13 +23,13 @@ function runSeedScript(args: string[]): string {
 }
 
 async function postJson<T>(request: APIRequestContext, pathName: string, body?: unknown): Promise<T> {
-  const response = await request.post(`${BACKEND}${pathName}`, body ? { data: body } : undefined);
+  const response = await request.post(`${BACKEND}${pathName}`, { headers: authHeaders(), ...(body ? { data: body } : {}) });
   expect(response.ok(), `POST ${pathName} failed with ${response.status()}`).toBeTruthy();
   return response.json() as Promise<T>;
 }
 
 async function putJson<T>(request: APIRequestContext, pathName: string, body?: unknown): Promise<T> {
-  const response = await request.put(`${BACKEND}${pathName}`, body ? { data: body } : undefined);
+  const response = await request.put(`${BACKEND}${pathName}`, { headers: authHeaders(), ...(body ? { data: body } : {}) });
   expect(response.status()).toBeLessThan(400);
   return response.json() as Promise<T>;
 }
@@ -47,11 +48,14 @@ export async function seedCompany(
 }
 
 export async function activateCompany(request: APIRequestContext, companyId: string): Promise<void> {
-  const list = (await (await request.get(`${BACKEND}/companies`)).json()) as { id: string; isActive: boolean }[];
+  const list = (await (await request.get(`${BACKEND}/companies`, { headers: authHeaders() })).json()) as { id: string; isActive: boolean }[];
   for (const company of list) {
     const isActive = company.id === companyId;
     if (company.isActive !== isActive) {
-      const response = await request.put(`${BACKEND}/companies/${company.id}`, { data: { isActive } });
+      const response = await request.put(`${BACKEND}/companies/${company.id}`, {
+        headers: authHeaders(),
+        data: { isActive },
+      });
       expect(response.ok()).toBeTruthy();
     }
   }
@@ -83,13 +87,13 @@ export async function seedOpportunity(
 }
 
 export async function getOpportunities(request: APIRequestContext, companyId: string): Promise<Opportunity[]> {
-  const response = await request.get(`${BACKEND}/companies/${companyId}/opportunities`);
+  const response = await request.get(`${BACKEND}/companies/${companyId}/opportunities`, { headers: authHeaders() });
   expect(response.ok()).toBeTruthy();
   return response.json() as Promise<Opportunity[]>;
 }
 
 export async function getEvidenceList(request: APIRequestContext, companyId: string): Promise<Evidence[]> {
-  const response = await request.get(`${BACKEND}/companies/${companyId}/evidence`);
+  const response = await request.get(`${BACKEND}/companies/${companyId}/evidence`, { headers: authHeaders() });
   expect(response.ok()).toBeTruthy();
   return response.json() as Promise<Evidence[]>;
 }
@@ -101,6 +105,7 @@ export async function linkEvidence(
   evidenceIds: string[]
 ): Promise<void> {
   const response = await request.post(`${BACKEND}/companies/${companyId}/opportunities/${opportunityId}/evidence`, {
+    headers: authHeaders(),
     data: { evidenceIds },
   });
   expect(response.ok()).toBeTruthy();

@@ -1,3 +1,24 @@
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName: string;
+  workspaceId: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: AuthUser;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export interface RegisterInput extends LoginInput {
+  displayName: string;
+}
+
 export type CompanyBusinessModel = "saas" | "ecommerce" | "agency" | "services" | "other";
 
 export type CompanyStage = "startup" | "growth" | "scale" | "enterprise";

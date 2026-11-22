@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Home,
   Lightbulb,
+  LogOut,
   Menu,
   PlugZap,
   PlayCircle,
@@ -19,8 +20,9 @@ import {
   Stethoscope,
   TrendingUp,
 } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { Dialog } from "@/components/ui/dialog";
-import { ToastProvider } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast";
 import { growthosApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Company } from "@/types";
@@ -45,6 +47,8 @@ function isActiveRoute(pathname: string, href: string): boolean {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { user, logout } = useAuth();
+  const toast = useToast();
   const [companies, setCompanies] = useState<Company[] | null>(null);
   const [backendError, setBackendError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(() =>
@@ -61,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         if (!cancelled)
-          setBackendError("The backend is not reachable. Start it with `npm run start` in the `backend/` directory.");
+          setBackendError("The GrowthOS API is not reachable. Please try again shortly.");
       });
     return () => {
       cancelled = true;
@@ -86,8 +90,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     [router]
   );
 
+  const handleLogout = useCallback(async () => {
+    await logout();
+    toast.success("Signed out.");
+    router.replace("/login");
+  }, [logout, router, toast]);
+
   return (
-    <ToastProvider>
       <div className="flex min-h-full bg-bg text-fg">
         <Suspense fallback={null}>
           <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
@@ -178,16 +187,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </option>
                 ))}
               </select>
-              {activeCompany ? <span className="text-xs text-fg-muted">{activeCompany.name}</span> : null}
+              {activeCompany ? <span className="hidden text-xs text-fg-muted lg:inline">{activeCompany.name}</span> : null}
               <Link href="/settings" aria-label="Settings" className="rounded-lg p-2 text-fg-muted hover:bg-muted hover:text-fg">
                 <Settings className="h-5 w-5" />
               </Link>
+              <span className="hidden max-w-[180px] truncate text-xs text-fg-muted xl:inline" title={user?.email}>
+                {user?.displayName ?? user?.email}
+              </span>
+              <button
+                type="button"
+                aria-label="Sign out"
+                title="Sign out"
+                onClick={handleLogout}
+                className="rounded-lg p-2 text-fg-muted hover:bg-muted hover:text-fg"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
             </div>
           </header>
           <main className="mx-auto w-full max-w-[1280px] px-6 py-8">{children}</main>
         </div>
       </div>
-    </ToastProvider>
   );
 }
 

@@ -8,6 +8,7 @@ import {
   seedEvidence,
   seedOpportunity,
 } from "./api";
+import { authHeaders } from "./auth-state";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 
@@ -25,6 +26,7 @@ test("lists opportunities with readable status labels and deterministic priority
   // The status transition API computes the deterministic score:
   // round(80*0.4) + round((10-3)*0.3) + bonus(approved=10) = 32 + 21 + 10 = 63.
   const response = await request.put(`http://localhost:8301/api/v1/companies/${company.id}/opportunities/${opportunity.id}/status`, {
+    headers: authHeaders(),
     data: { status: "approved" },
   });
   expect(response.ok()).toBeTruthy();

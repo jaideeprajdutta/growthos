@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -74,7 +75,8 @@ const DEFAULT_FORM_VALUES: CompanyProfileFormValues = {
   productDescription: "",
 };
 
-export default function CompanyProfilePage({ params }: { params: { companyId: string } }) {
+export default function CompanyProfilePage() {
+  const params = useParams<{ companyId: string }>();
   const companyId = params.companyId;
   const company = useApi<Company>(() => growthosApi.getCompany(companyId), `company:${companyId}`);
   const profile = useApi<CompanyProfile | null>(() => growthosApi.getCompanyProfile(companyId), `company-profile:${companyId}`);

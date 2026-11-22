@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AppShell } from "@/components/layout/app-shell";
+import { AppGate } from "@/components/auth/app-gate";
+import { AuthProvider } from "@/components/auth/auth-provider";
+import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,7 +25,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <AppShell>{children}</AppShell>
+        <AuthProvider>
+          <ToastProvider>
+            <Suspense
+              fallback={
+                <div className="flex min-h-screen items-center justify-center bg-bg px-6">
+                  <p className="text-sm text-fg-muted">Loading GrowthOS…</p>
+                </div>
+              }
+            >
+              <AppGate>{children}</AppGate>
+            </Suspense>
+          </ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   );

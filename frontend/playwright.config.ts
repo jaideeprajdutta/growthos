@@ -10,7 +10,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  use: { baseURL: FRONTEND },
+  use: { baseURL: FRONTEND, storageState: "./test-results/e2e-storage.json" },
   globalSetup: "./tests/e2e/global-setup.ts",
   globalTeardown: "./tests/e2e/global-teardown.ts",
   webServer: {

@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { activateCompany, seedCompany, seedEvidence, seedOpportunity } from "./api";
+import { authHeaders } from "./auth-state";
 
 const API = "http://localhost:8301/api/v1";
 const CSV = `baseline,observed,target,direction,measurement_start,measurement_end,source_name,notes
@@ -7,7 +8,7 @@ const CSV = `baseline,observed,target,direction,measurement_start,measurement_en
 `;
 
 async function apiGet<T>(request: APIRequestContext, pathName: string): Promise<T> {
-  const response = await request.get(`${API}${pathName}`);
+  const response = await request.get(`${API}${pathName}`, { headers: authHeaders() });
   expect(response.ok(), `GET ${pathName} failed with ${response.status()}`).toBeTruthy();
   return response.json() as Promise<T>;
 }
