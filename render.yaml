@@ -1,0 +1,29 @@
+# Render Blueprint for the GrowthOS FastAPI backend.
+# The database URL and browser origin are supplied in the Render dashboard so
+# no credential or environment-specific URL is committed to Git.
+services:
+  - type: web
+    name: growthos-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    region: oregon
+    branch: master
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: SESSION_TTL_HOURS
+        value: 168
+      - key: ALLOW_REGISTRATION
+        value: true
+      - key: ENABLE_API_DOCS
+        value: false
